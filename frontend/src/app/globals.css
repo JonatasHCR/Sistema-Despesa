@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 120 17% 98%;
+    --foreground: 120 5% 25%;
+
+    --card: 120 17% 98%;
+    --card-foreground: 120 5% 25%;
+
+    --popover: 120 17% 98%;
+    --popover-foreground: 120 5% 25%;
+
+    --primary: 125 34% 56%;
+    --primary-foreground: 125 25% 95%;
+
+    --secondary: 120 20% 90%;
+    --secondary-foreground: 120 5% 25%;
+
+    --muted: 120 20% 90%;
+    --muted-foreground: 120 5% 45%;
+
+    --accent: 206 50% 64%;
+    --accent-foreground: 206 25% 95%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 120 20% 88%;
+    --input: 120 20% 88%;
+    --ring: 125 34% 56%;
+
+    --radius: 0.5rem;
+
+    --chart-1: 206 50% 64%;
+    --chart-2: 125 34% 56%;
+    --chart-3: 40 90% 65%;
+    --chart-4: 0 84% 60%;
+    --chart-5: 300 80% 60%;
+    
+    --sidebar-background: 120 5% 20%;
+    --sidebar-foreground: 120 5% 85%;
+    --sidebar-primary: 125 34% 56%;
+    --sidebar-primary-foreground: 125 25% 95%;
+    --sidebar-accent: 120 5% 28%;
+    --sidebar-accent-foreground: 120 5% 95%;
+    --sidebar-border: 120 5% 28%;
+    --sidebar-ring: 125 34% 56%;
+
+    --status-due: 125 34% 56%;
+    --status-due-soon: 40 90% 65%;
+    --status-overdue: 0 84% 60%;
+    --status-paid: 206 50% 64%;
+  }
+
+  .dark {
+    --background: 120 5% 20%;
+    --foreground: 120 5% 85%;
+    --card: 120 5% 20%;
+    --card-foreground: 120 5% 85%;
+    --popover: 120 5% 15%;
+    --popover-foreground: 120 5% 85%;
+    --primary: 125 34% 56%;
+    --primary-foreground: 125 25% 95%;
+    --secondary: 120 5% 28%;
+    --secondary-foreground: 120 5% 95%;
+    --muted: 120 5% 28%;
+    --muted-foreground: 120 5% 65%;
+    --accent: 206 50% 64%;
+    --accent-foreground: 206 25% 95%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 120 5% 28%;
+    --input: 120 5% 28%;
+    --ring: 125 34% 56%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}

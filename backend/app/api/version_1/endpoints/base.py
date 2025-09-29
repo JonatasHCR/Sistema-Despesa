@@ -8,18 +8,8 @@ from app.core.database import get_db
 from app.service.base import BaseService
 
 
-Service = TypeVar("Service", bound=BaseService)
-InputSchema = TypeVar("InputSchema", bound=BaseModel)
-OutputSchema = TypeVar("OutSchema", bound=BaseModel)
 
-
-class BaseEndpoint(Generic[Service, InputSchema, OutputSchema]):
-    router: APIRouter
-    service: Type[Service]
-    input_schema: Type[InputSchema]
-    output_schema: Type[OutputSchema]
-    prefix: str
-    tags: list[str]
+class BaseEndpoint[Service, InputSchema, OutputSchema]:
 
     def __init__(
         self,
@@ -35,8 +25,7 @@ class BaseEndpoint(Generic[Service, InputSchema, OutputSchema]):
         self.service = service
         self.router = APIRouter(prefix=prefix, tags=tags or [prefix.strip("/")])
 
-
-    def _register_routes(self):
+    def _register_routes(self) -> None:
 
         self.router.get("/", response_model=list[self.output_schema])(self._get_all)
         self.router.get("/{id}", response_model=self.output_schema)(self._get_by_id)
@@ -69,7 +58,7 @@ class BaseEndpoint(Generic[Service, InputSchema, OutputSchema]):
         return await service.get_all(limit, offset)
 
     async def _create(
-        self, schema: Type[InputSchema], db: AsyncSession = Depends(get_db)
+        self, schema: InputSchema, db: AsyncSession = Depends(get_db)
     ) -> OutputSchema:
         service = self.service(db)
 

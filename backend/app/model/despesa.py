@@ -16,8 +16,9 @@ class Despesa(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String(100), nullable=False)
-    tipo = Column(String(1), nullable=False)
+    tipo = Column(String(100), nullable=False)
     valor = Column(Numeric, nullable=False)
+    status = Column(String(1), nullable=False)
     vencimento = Column(Date, nullable=False, comment="Data de vencimento da despesa")
     user_id = Column(
         Integer, nullable=False, comment="ID do usuário que criou a despesa"
@@ -25,7 +26,7 @@ class Despesa(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "tipo IN ('B', 'N')",
+            "status IN ('P', 'Q')",
             "ck_despesas_tipo",
         ),
         ForeignKeyConstraint(

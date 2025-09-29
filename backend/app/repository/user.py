@@ -14,3 +14,10 @@ class UserRepository(BaseRepository[User]):
             return busca[0]
 
         raise ValueError(f"Usuário com email = {email} não encontrado")
+    
+    async def get_by_username(self, username: str) -> User:
+        busca = await self.get_by_filter(User.nome == username)
+        if busca:
+            return busca[0]
+
+        raise ValueError(f"Usuário com nome = {username} não encontrado")

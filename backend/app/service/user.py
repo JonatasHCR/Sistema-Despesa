@@ -12,3 +12,7 @@ class UserService(BaseService[UserRepository, UserSchema, UserOutputSchema]):
     async def get_by_email(self, email: str) -> UserOutputSchema:
         busca = await self.repository.get_by_email(email)
         return UserOutputSchema.model_validate(busca)
+    
+    async def get_by_username(self, username: str) -> UserOutputSchema:
+        busca = await self.repository.get_by_username(username)
+        return UserOutputSchema.model_validate(busca)

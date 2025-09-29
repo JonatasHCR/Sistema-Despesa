@@ -23,7 +23,7 @@ class BaseRepository(Generic[Model]):
         busca = busca.scalar_one_or_none()
 
         if busca is None:
-            raise ValueError("{objeto} com ID = {id} não encontrado")
+            raise ValueError("{objeto} com ID = {id} não encontrado.")
 
         return busca
 
@@ -55,3 +55,5 @@ class BaseRepository(Generic[Model]):
         obj = await self.get_by_id(id)
         await self.__db.delete(obj)
         await self.__db.commit()
+
+    

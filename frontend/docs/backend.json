@@ -1,0 +1,49 @@
+{
+    "entities": {
+        "expense": {
+            "title": "Expense",
+            "description": "Represents a single expense entry.",
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "The name of the expense."
+                },
+                "amount": {
+                    "type": "number",
+                    "description": "The amount of the expense."
+                },
+                "dueDate": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The due date of the expense."
+                },
+                "type": {
+                    "type": "string",
+                    "description": "The category or type of the expense (e.g., Boleto, Nota)."
+                },
+                "status": {
+                    "type": "string",
+                    "enum": ["P", "Q"],
+                    "description": "Status da despesa: P - Pendente, Q - Quitada"
+                },
+                "createdBy": {
+                    "type": "string",
+                    "description": "The name of the user who created the expense."
+                }
+            },
+            "required": ["name", "amount", "dueDate", "type", "status", "createdBy"]
+        }
+    },
+    "auth": {
+        "providers": ["email"]
+    },
+    "firestore": {
+        "/expenses/{expenseId}": {
+            "schema": {
+                "$ref": "#/entities/expense"
+            },
+            "description": "A collection of all expenses."
+        }
+    }
+}

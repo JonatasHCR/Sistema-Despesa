@@ -1,0 +1,1 @@
+router.post "users/", router.put "users/{id}", router.delete "users/{id}", router.get"users/", router.get "users/{id}", router.get "users/email/{user_email}"
