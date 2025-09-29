@@ -7,8 +7,8 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
-import { Button } from '../ui/button';
-import { Calendar } from '../ui/calendar';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
 import {
   Form,
   FormControl,
@@ -16,22 +16,39 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '../ui/form';
-import { Input } from '../ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ptBR } from 'date-fns/locale';
 import { updateExpense } from '@/lib/api';
 import { EXPENSE_STATUSES } from '@/lib/constants';
 import { type Expense } from '@/lib/types';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const FormSchema = z.object({
-  nome: z.string({ required_error: 'O nome da despesa é obrigatório.' }),
-  valor: z.coerce.number({ required_error: 'O valor da despesa é obrigatório.' }),
+  nome: z.string({ required_error: 'O nome da despesa é obrigatório.' }).min(1, 'O nome da despesa é obrigatório.'),
+  valor: z.string().transform((val, ctx) => {
+    const parsed = parseFloat(val.replace(',', '.'));
+    if (isNaN(parsed)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Valor inválido. Use números e separe os centavos com vírgula ou ponto.',
+      });
+      return z.NEVER;
+    }
+    if (parsed <= 0) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'O valor deve ser maior que zero.',
+        });
+        return z.NEVER;
+    }
+    return parsed;
+  }),
   vencimento: z.date({ required_error: 'A data de vencimento é obrigatória.' }),
-  tipo: z.string({ required_error: 'O tipo da despesa é obrigatório.' }),
+  tipo: z.string({ required_error: 'O tipo da despesa é obrigatório.' }).min(1, 'O tipo da despesa é obrigatório.'),
   status: z.enum(EXPENSE_STATUSES, { required_error: 'O status da despesa é obrigatório.' }),
 });
 
@@ -42,7 +59,7 @@ export function EditExpenseForm({ expense }: { expense: Expense }) {
     resolver: zodResolver(FormSchema),
     defaultValues: {
       nome: expense.nome,
-      valor: expense.valor,
+      valor: String(expense.valor).replace('.', ','), // Format for display
       vencimento: new Date(expense.vencimento),
       tipo: expense.tipo,
       status: expense.status,
@@ -84,7 +101,7 @@ export function EditExpenseForm({ expense }: { expense: Expense }) {
             <FormItem>
               <FormLabel>Valor</FormLabel>
               <FormControl>
-                <Input type="number" {...field} />
+                <Input type="text" inputMode='decimal' placeholder="123,45" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -120,9 +137,7 @@ export function EditExpenseForm({ expense }: { expense: Expense }) {
                     mode="single"
                     selected={field.value}
                     onSelect={field.onChange}
-                    disabled={(date) =>
-                      date < new Date('1900-01-01') || date > new Date('2100-01-01')
-                    }
+                    // Re-enable date disabling if needed
                     initialFocus
                   />
                 </PopoverContent>
