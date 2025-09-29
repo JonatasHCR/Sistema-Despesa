@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { type Expense, type ExpenseStatus, type DynamicExpenseStatus } from '../../lib/types';
+import { type Expense, type DynamicExpenseStatus } from '../../lib/types';
 import { ExpenseCard } from './ExpenseCard';
 import { StatusCard } from './StatusCard';
 import { Ban, Loader, ChevronLeft, ChevronRight, Search, Filter, CalendarIcon, Receipt, Hourglass, AlertTriangle, CheckCircle2 } from 'lucide-react';

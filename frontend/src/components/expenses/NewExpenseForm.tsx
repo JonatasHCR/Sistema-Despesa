@@ -26,7 +26,7 @@ import { cn } from '../../lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { addExpense, getExpenses } from '../../lib/api';
-import { type User } from '../../lib/types';
+import { type User, EXPENSE_STATUSES } from '../../lib/types';
 import { Combobox } from '../ui/combobox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
@@ -47,7 +47,7 @@ const expenseFormSchema = z.object({
   tipo: z.string().min(1, {
     message: 'Selecione ou crie um tipo de despesa.',
   }),
-  status: z.enum(['P', 'Q'], {
+  status: z.enum(EXPENSE_STATUSES, {
     required_error: 'O status é obrigatório.',
   }),
   user_id: z.number().int().positive({
