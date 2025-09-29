@@ -23,7 +23,6 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ptBR } from 'date-fns/locale';
 import { updateExpense } from '@/lib/api';
-import { EXPENSE_STATUSES } from '@/lib/constants';
 import { type Expense } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -49,7 +48,7 @@ const FormSchema = z.object({
   }),
   vencimento: z.date({ required_error: 'A data de vencimento é obrigatória.' }),
   tipo: z.string({ required_error: 'O tipo da despesa é obrigatório.' }).min(1, 'O tipo da despesa é obrigatório.'),
-  status: z.enum(EXPENSE_STATUSES, { required_error: 'O status da despesa é obrigatório.' }),
+  status: z.enum(["P", "Q"], { required_error: 'O status da despesa é obrigatório.' }),
 });
 
 export function EditExpenseForm({ expense }: { expense: Expense }) {

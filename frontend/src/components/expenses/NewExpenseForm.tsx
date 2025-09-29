@@ -24,7 +24,6 @@ import { cn } from '@/lib/utils';
 import { ptBR } from 'date-fns/locale';
 import { addExpense } from '@/lib/api';
 import { type User } from '@/lib/types';
-import { EXPENSE_STATUSES } from '@/lib/constants';
 import { Combobox } from '@/components/ui/combobox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -50,7 +49,7 @@ const FormSchema = z.object({
   }),
   vencimento: z.date({ required_error: 'A data de vencimento é obrigatória.' }),
   tipo: z.string({ required_error: 'O tipo da despesa é obrigatório.' }).min(1, 'O tipo da despesa é obrigatório.'),
-  status: z.enum(EXPENSE_STATUSES, { required_error: 'O status da despesa é obrigatório.' }),
+  status: z.enum(["P", "Q"], { required_error: 'O status da despesa é obrigatório.' }),
   user_id: z.coerce.number({ required_error: 'O usuário é obrigatório.' }).min(1, 'Selecione um usuário.'),
 });
 
