@@ -105,12 +105,27 @@ export function NewExpenseForm() {
     if (!user) return;
     setIsSubmitting(true);
     try {
-      const { ...expenseData } = data;
+      // Sanitize and convert form data before sending to the API
+      const sanitizedValue = data.valor.replace(/\./g, '').replace(',', '.');
+      const numericValue = parseFloat(sanitizedValue);
+
+      if (isNaN(numericValue)) {
+        toast({
+          variant: 'destructive',
+          title: 'Valor Inválido',
+          description: 'O valor da despesa não é um número válido.',
+        });
+        setIsSubmitting(false);
+        return;
+      }
       
-      await addExpense({
-        ...expenseData,
-        vencimento: expenseData.vencimento.toISOString(),
-      });
+      const expensePayload = {
+        ...data,
+        valor: numericValue,
+        vencimento: data.vencimento.toISOString().split('T')[0], // Format as YYYY-MM-DD
+      };
+      
+      await addExpense(expensePayload);
 
       toast({
         title: 'Sucesso!',

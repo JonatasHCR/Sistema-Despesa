@@ -87,12 +87,27 @@ export function EditExpenseForm({ expense }: { expense: Expense }) {
   async function onSubmit(data: ExpenseFormValues) {
     setIsSubmitting(true);
     try {
-      const { ...expenseData } = data;
+      // Sanitize and convert form data before sending to the API
+      const sanitizedValue = data.valor.replace(/\./g, '').replace(',', '.');
+      const numericValue = parseFloat(sanitizedValue);
+
+      if (isNaN(numericValue)) {
+        toast({
+          variant: 'destructive',
+          title: 'Valor Inválido',
+          description: 'O valor da despesa não é um número válido.',
+        });
+        setIsSubmitting(false);
+        return;
+      }
       
-      await updateExpense(String(expense.id), {
-        ...expenseData,
-        vencimento: expenseData.vencimento.toISOString(),
-      });
+      const expensePayload = {
+        ...data,
+        valor: numericValue,
+        vencimento: data.vencimento.toISOString().split('T')[0], // Format as YYYY-MM-DD
+      };
+      
+      await updateExpense(String(expense.id), expensePayload);
 
       toast({
         title: 'Sucesso!',
