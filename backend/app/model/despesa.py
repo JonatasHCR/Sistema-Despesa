@@ -8,6 +8,7 @@ from sqlalchemy import (
     ForeignKeyConstraint,
 )
 from app.core.database import Base
+from app.core.enums import DespesaStatusEnum
 
 
 class Despesa(Base):
@@ -26,8 +27,8 @@ class Despesa(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "status IN ('P', 'Q')",
-            "ck_despesas_tipo",
+            status.in_([s.value for s in DespesaStatusEnum]),
+            name="ck_despesas_status",
         ),
         ForeignKeyConstraint(
             ["user_id"],
