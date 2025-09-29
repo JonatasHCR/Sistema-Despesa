@@ -2,8 +2,7 @@ import { EditExpenseForm } from '../../../../components/expenses/EditExpenseForm
 import { getExpenseById } from '../../../../lib/api';
 import { notFound } from 'next/navigation';
 
-export default async function EditExpensePage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default async function EditExpensePage({ params: { id } }: { params: { id: string } }) {
   const expense = await getExpenseById(id);
 
   if (!expense) {
