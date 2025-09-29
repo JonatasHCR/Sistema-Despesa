@@ -12,8 +12,8 @@ class BaseRepository(Generic[Model]):
         self.model = model
         self.__db = db
 
-    async def get_all(self, limit=15, offset=0) -> list[Model]:
-        busca = await self.__db.execute(select(self.model).limit(limit).offset(offset))
+    async def get_all(self) -> list[Model]:
+        busca = await self.__db.execute(select(self.model))
         busca = busca.scalars().all()
 
         return busca
@@ -27,9 +27,9 @@ class BaseRepository(Generic[Model]):
 
         return busca
 
-    async def get_by_filter(self, *filter, limit=15, offset=0) -> list[Model]:
+    async def get_by_filter(self, *filter) -> list[Model]:
         busca = await self.__db.execute(
-            select(self.model).where(*filter).limit(limit).offset(offset)
+            select(self.model).where(*filter)
         )
         busca = busca.scalars().all()
 
