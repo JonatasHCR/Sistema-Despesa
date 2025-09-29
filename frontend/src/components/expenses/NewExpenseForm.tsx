@@ -21,11 +21,11 @@ import {
 import { Input } from '../ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { format } from 'date-fns';
-import { cn } from '../../lib/utils';
+import { cn } from '@/lib/utils';
 import { ptBR } from 'date-fns/locale';
-import { addExpense, getExpenses } from '../../lib/api';
-import { type User } from '../../lib/types';
-import { EXPENSE_STATUSES } from '../../lib/constants';
+import { addExpense, getExpenses } from '@/lib/api';
+import { type User } from '@/lib/types';
+import { EXPENSE_STATUSES } from '@/lib/constants';
 import { Combobox } from '../ui/combobox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 

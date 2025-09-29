@@ -20,11 +20,11 @@ import {
 import { Input } from '../ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { format } from 'date-fns';
-import { cn } from '../../lib/utils';
+import { cn } from '@/lib/utils';
 import { ptBR } from 'date-fns/locale';
-import { updateExpense } from '../../lib/api';
-import { EXPENSE_STATUSES } from '../../lib/constants';
-import { type Expense } from '../../lib/types';
+import { updateExpense } from '@/lib/api';
+import { EXPENSE_STATUSES } from '@/lib/constants';
+import { type Expense } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const FormSchema = z.object({
