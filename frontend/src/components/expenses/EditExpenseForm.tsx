@@ -51,6 +51,7 @@ const expenseFormSchema = z.object({
   user_id: z.number().int().positive({
     message: 'ID do usuário é inválido.'
   }),
+  userName: z.string().optional(),
 });
 
 type ExpenseFormValues = z.infer<typeof expenseFormSchema>;
@@ -74,7 +75,7 @@ export function EditExpenseForm({ expense }: { expense: Expense }) {
     fetchExpenseTypes();
   }, []);
 
-  const form = useForm<ExpenseFormValues & { userName?: string }>({
+  const form = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseFormSchema),
     defaultValues: {
       ...expense,
@@ -87,27 +88,12 @@ export function EditExpenseForm({ expense }: { expense: Expense }) {
   async function onSubmit(data: ExpenseFormValues) {
     setIsSubmitting(true);
     try {
-      // Sanitize and convert form data before sending to the API
-      const sanitizedValue = data.valor.replace(/\./g, '').replace(',', '.');
-      const numericValue = parseFloat(sanitizedValue);
-
-      if (isNaN(numericValue)) {
-        toast({
-          variant: 'destructive',
-          title: 'Valor Inválido',
-          description: 'O valor da despesa não é um número válido.',
-        });
-        setIsSubmitting(false);
-        return;
-      }
-      
-      const expensePayload = {
+      const expenseData = {
         ...data,
-        valor: numericValue,
-        vencimento: data.vencimento.toISOString().split('T')[0], // Format as YYYY-MM-DD
+        vencimento: data.vencimento.toISOString(),
       };
-      
-      await updateExpense(String(expense.id), expensePayload);
+
+      await updateExpense(String(expense.id), expenseData);
 
       toast({
         title: 'Sucesso!',
