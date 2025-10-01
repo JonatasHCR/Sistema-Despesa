@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../ui/card';
@@ -71,7 +72,7 @@ export function ExpenseCard({ expense, onUpdate }: ExpenseCardProps) {
     const successMessage = newStatus === 'Q' ? 'Despesa marcada como paga.' : 'Despesa marcada como pendente.';
 
     try {
-        await updateExpense(String(expense.id), { ...expense, status: newStatus });
+        await updateExpense(String(expense.id), { status: newStatus });
         toast({
             title: 'Sucesso!',
             description: successMessage,
@@ -93,8 +94,10 @@ export function ExpenseCard({ expense, onUpdate }: ExpenseCardProps) {
 
   return (
     <Card className={cn("flex flex-col justify-between h-full transition-shadow hover:shadow-md border-l-4", {
-      'border-l-status-paid': expense.status === 'Q',
-      'border-l-primary': expense.status === 'P'
+      'border-l-status-paid': expense.dynamicStatus === 'paid',
+      'border-l-status-due': expense.dynamicStatus === 'due',
+      'border-l-status-due-soon': expense.dynamicStatus === 'due-soon',
+      'border-l-status-overdue': expense.dynamicStatus === 'overdue',
     })}>
       <CardHeader>
         <div className="flex items-start justify-between gap-4">

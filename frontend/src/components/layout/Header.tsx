@@ -1,9 +1,10 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, User, LogOut } from 'lucide-react';
+import { PlusCircle, User, LogOut, Settings } from 'lucide-react';
 import { type User as UserType } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import {
@@ -14,6 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
+import Link from 'next/link';
 
 interface HeaderProps {
     title: string;
@@ -80,6 +82,13 @@ export default function Header({ title, subtitle, showNewExpenseButton = false }
                   </p>
                 </div>
               </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild className="cursor-pointer">
+                <Link href="/profile">
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Meu Perfil</span>
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
                 <LogOut className="mr-2 h-4 w-4" />

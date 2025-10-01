@@ -23,7 +23,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { CalendarIcon } from 'lucide-react';
 import { Calendar } from '../ui/calendar';
 import { cn } from '../../lib/utils';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, formatISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { type Expense } from '../../lib/types';
 import { updateExpense, getExpenses } from '../../lib/api';
@@ -61,18 +61,21 @@ export function EditExpenseForm({ expense }: { expense: Expense }) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [expenseTypes, setExpenseTypes] = useState<string[]>([]);
+  const [expenseNames, setExpenseNames] = useState<string[]>([]);
 
   useEffect(() => {
-    async function fetchExpenseTypes() {
+    async function fetchData() {
         try {
             const expenses = await getExpenses();
             const types = new Set(expenses.map(e => e.tipo));
+            const names = new Set(expenses.map(e => e.nome));
             setExpenseTypes(Array.from(types));
+            setExpenseNames(Array.from(names));
         } catch (error) {
-            console.error("Failed to fetch expense types:", error);
+            console.error("Failed to fetch expense data:", error);
         }
     }
-    fetchExpenseTypes();
+    fetchData();
   }, []);
 
   const form = useForm<ExpenseFormValues>({
@@ -90,7 +93,7 @@ export function EditExpenseForm({ expense }: { expense: Expense }) {
     try {
       const expenseData = {
         ...data,
-        vencimento: data.vencimento.toISOString(),
+        vencimento: formatISO(data.vencimento),
       };
 
       await updateExpense(String(expense.id), expenseData);
@@ -114,7 +117,8 @@ export function EditExpenseForm({ expense }: { expense: Expense }) {
     }
   }
 
-  const comboboxOptions = useMemo(() => expenseTypes.map(type => ({ value: type, label: type })), [expenseTypes]);
+  const typeOptions = useMemo(() => expenseTypes.map(type => ({ value: type, label: type })), [expenseTypes]);
+  const nameOptions = useMemo(() => expenseNames.map(name => ({ value: name, label: name })), [expenseNames]);
   
   const handleTypeChange = (value: string) => {
     form.setValue('tipo', value);
@@ -122,6 +126,14 @@ export function EditExpenseForm({ expense }: { expense: Expense }) {
       setExpenseTypes(prev => [...prev, value]);
     }
   };
+
+  const handleNameChange = (value: string) => {
+    form.setValue('nome', value);
+    if (value && !expenseNames.includes(value)) {
+      setExpenseNames(prev => [...prev, value]);
+    }
+  };
+
 
   return (
     <Card>
@@ -132,16 +144,17 @@ export function EditExpenseForm({ expense }: { expense: Expense }) {
               control={form.control}
               name="nome"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="flex flex-col">
                   <FormLabel>Nome da Despesa</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Ex: Conta de Luz"
-                      {...field}
-                      onChange={(e) => field.onChange(e.target.value.toUpperCase())}
-                      className="uppercase"
+                   <Combobox
+                        options={nameOptions}
+                        value={field.value}
+                        onChange={handleNameChange}
+                        placeholder="Selecione ou crie uma despesa"
+                        searchPlaceholder="Pesquisar ou criar..."
+                        emptyMessage="Nenhuma despesa encontrada. Crie uma nova."
+                        isCreatable={true}
                     />
-                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -210,7 +223,7 @@ export function EditExpenseForm({ expense }: { expense: Expense }) {
                     <FormItem className="flex flex-col">
                     <FormLabel>Tipo de Despesa</FormLabel>
                         <Combobox
-                            options={comboboxOptions}
+                            options={typeOptions}
                             value={field.value}
                             onChange={handleTypeChange}
                             placeholder="Selecione ou crie um tipo"

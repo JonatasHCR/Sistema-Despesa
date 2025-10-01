@@ -42,23 +42,21 @@ export function Combobox({
   const [inputValue, setInputValue] = React.useState("")
 
   const handleSelect = (currentValue: string) => {
-    const upperValue = currentValue.toUpperCase();
-    onChange(upperValue === value ? "" : upperValue)
+    onChange(currentValue.toLowerCase() === value?.toLowerCase() ? "" : currentValue)
     setInputValue("")
     setOpen(false)
   }
 
   const handleCreate = () => {
-    const upperValue = inputValue.toUpperCase();
-    if (upperValue) {
-      onChange(upperValue)
+    if (inputValue) {
+      onChange(inputValue)
       setInputValue("")
       setOpen(false)
     }
   }
 
   const handleInputChange = (searchValue: string) => {
-    setInputValue(searchValue.toUpperCase());
+    setInputValue(searchValue);
   }
 
   const filteredOptions = options.filter(option => 
@@ -74,7 +72,7 @@ export function Combobox({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between uppercase"
+          className="w-full justify-between"
         >
           {value
             ? options.find((option) => option.value.toLowerCase() === value.toLowerCase())?.label
@@ -88,7 +86,6 @@ export function Combobox({
             placeholder={searchPlaceholder}
             value={inputValue}
             onValueChange={handleInputChange}
-            className="uppercase"
           />
           <CommandList>
             {filteredOptions.length === 0 && !showCreateOption && <CommandEmpty>{emptyMessage}</CommandEmpty>}
@@ -98,7 +95,6 @@ export function Combobox({
                   key={option.value}
                   value={option.value}
                   onSelect={handleSelect}
-                  className="uppercase"
                 >
                   <Check
                     className={cn(
@@ -112,7 +108,7 @@ export function Combobox({
               {showCreateOption && (
                 <CommandItem
                   onSelect={handleCreate}
-                  className="text-primary cursor-pointer uppercase"
+                  className="text-primary cursor-pointer"
                 >
                   <PlusCircle className="mr-2 h-4 w-4" />
                   Criar "{inputValue}"

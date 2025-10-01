@@ -43,10 +43,10 @@ class DespesaEndpoint:
             )
 
     async def _get_all(
-        self, db: AsyncSession = Depends(get_db)
+        self, limit: int = 100, offset: int = 0, db: AsyncSession = Depends(get_db)
     ) -> list[DespesaOutputSchema]:
         service = self.service(db)
-        return await service.get_all()
+        return await service.get_all(limit=limit, offset=offset)
 
     async def _create(
         self, schema: DespesaSchema, db: AsyncSession = Depends(get_db)

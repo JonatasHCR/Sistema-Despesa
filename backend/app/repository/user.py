@@ -1,3 +1,4 @@
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.model.user import User
@@ -15,9 +16,9 @@ class UserRepository(BaseRepository[User]):
 
         raise ValueError(f"Usuário com email = {email} não encontrado")
     
-    async def get_by_username(self, username: str) -> User:
+    async def get_by_username(self, username: str) -> User | None:
         busca = await self.get_by_filter(User.nome == username)
         if busca:
             return busca[0]
 
-        raise ValueError(f"Usuário com nome = {username} não encontrado")
+        return None

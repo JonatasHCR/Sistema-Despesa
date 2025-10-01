@@ -1,3 +1,4 @@
+
 from typing import Generic, TypeVar
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,8 +13,10 @@ class BaseRepository(Generic[Model]):
         self.model = model
         self.__db = db
 
-    async def get_all(self) -> list[Model]:
-        busca = await self.__db.execute(select(self.model))
+    async def get_all(self, limit: int = 15, offset: int = 0) -> list[Model]:
+        busca = await self.__db.execute(
+            select(self.model).limit(limit).offset(offset)
+        )
         busca = busca.scalars().all()
 
         return busca
@@ -45,7 +48,8 @@ class BaseRepository(Generic[Model]):
     async def update(self, id: int, **data) -> Model:
         obj = await self.get_by_id(id)
         for key, value in data.items():
-            setattr(obj, key, value)
+            if value is not None:
+                setattr(obj, key, value)
         self.__db.add(obj)
         await self.__db.commit()
         await self.__db.refresh(obj)

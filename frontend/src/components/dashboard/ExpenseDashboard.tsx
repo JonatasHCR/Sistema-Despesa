@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -5,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { type Expense, type ExpenseStatus, type DynamicExpenseStatus } from '../../lib/types';
 import { ExpenseCard } from './ExpenseCard';
 import { StatusCard } from './StatusCard';
-import { Ban, Loader, ChevronLeft, ChevronRight, Search, Filter, CalendarIcon, Receipt, Hourglass, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Ban, Loader, ChevronLeft, ChevronRight, Search, Filter, CalendarIcon, Receipt, Hourglass, AlertTriangle, CheckCircle2, ArrowUp, ArrowDown } from 'lucide-react';
 import { Skeleton } from '../ui/skeleton';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
@@ -20,6 +21,9 @@ import { cn } from '../../lib/utils';
 import { getExpenses } from '../../lib/api';
 
 type FilterField = 'nome' | 'tipo' | 'vencimento' | 'userName' | 'status';
+type SortField = 'vencimento' | 'valor' | 'nome';
+type SortDirection = 'asc' | 'desc';
+
 
 function DashboardSkeleton() {
     return (
@@ -62,9 +66,10 @@ function CardSkeleton() {
 const getDynamicStatus = (expense: Expense, dueSoonDays: number): DynamicExpenseStatus => {
     if (expense.status === 'Q') return 'paid';
     
-    const daysUntilDue = differenceInDays(parseISO(expense.vencimento), new Date());
+    const dueDate = parseISO(expense.vencimento);
+    const daysUntilDue = differenceInDays(dueDate, new Date());
     
-    if (isPast(parseISO(expense.vencimento)) && !isToday(parseISO(expense.vencimento))) return 'overdue';
+    if (isPast(dueDate) && !isToday(dueDate)) return 'overdue';
     if (daysUntilDue >= 0 && daysUntilDue <= dueSoonDays) return 'due-soon';
     return 'due';
 };
@@ -78,6 +83,8 @@ export function ExpenseDashboard() {
   const [filterValue, setFilterValue] = useState<string | Date | undefined>('');
   const [selectedStatus, setSelectedStatus] = useState<DynamicExpenseStatus | 'all'>('all');
   const [dueSoonDays, setDueSoonDays] = useState(5);
+  const [sortField, setSortField] = useState<SortField>('vencimento');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   const fetchAndSetExpenses = useCallback(async () => {
     // Keep loading indicator only for the first load.
@@ -111,14 +118,58 @@ export function ExpenseDashboard() {
         dynamicStatus: getDynamicStatus(e, dueSoonDays)
     }));
   }, [rawExpenses, dueSoonDays]);
+  
+  useEffect(() => {
+    const showNotifications = async () => {
+      if (!('Notification' in window)) {
+        console.log("This browser does not support desktop notification");
+        return;
+      }
 
-  const statusCounts = useMemo(() => {
+      if (Notification.permission === 'granted') {
+        const relevantExpenses = expensesWithDynamicStatus.filter(
+          e => e.dynamicStatus === 'overdue' || e.dynamicStatus === 'due-soon'
+        );
+
+        relevantExpenses.forEach(expense => {
+          const title = expense.dynamicStatus === 'overdue' ? 'Despesa Vencida!' : 'Despesa Próxima ao Vencimento!';
+          const body = `${expense.nome} - ${expense.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
+          new Notification(title, { body });
+        });
+
+      } else if (Notification.permission !== 'denied') {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          showNotifications(); // Retry showing notifications after permission is granted
+        }
+      }
+    };
+    
+    if(expensesWithDynamicStatus.length > 0) {
+        showNotifications();
+    }
+
+  }, [expensesWithDynamicStatus]);
+
+
+  const { statusCounts, statusTotals } = useMemo(() => {
+    const initial = {
+        statusCounts: { overdue: 0, 'due-soon': 0, due: 0, paid: 0 } as Record<DynamicExpenseStatus, number>,
+        statusTotals: { overdue: 0, 'due-soon': 0, due: 0, paid: 0 } as Record<DynamicExpenseStatus, number>,
+    };
+
+    if (!expensesWithDynamicStatus) {
+        return initial;
+    }
+    
     return expensesWithDynamicStatus.reduce(
       (acc, e) => {
-        acc[e.dynamicStatus]++;
+        if (e.dynamicStatus) {
+            acc.statusCounts[e.dynamicStatus]++;
+            acc.statusTotals[e.dynamicStatus] += e.valor;
+        }
         return acc;
-      },
-      { overdue: 0, 'due-soon': 0, due: 0, paid: 0 }
+      }, initial
     );
   }, [expensesWithDynamicStatus]);
 
@@ -144,14 +195,14 @@ export function ExpenseDashboard() {
     }
   }, [filterField]);
 
-  const filteredExpenses = useMemo(() => {
+  const sortedAndFilteredExpenses = useMemo(() => {
     let filtered = expensesWithDynamicStatus;
 
     if (selectedStatus !== 'all') {
         filtered = filtered.filter(e => e.dynamicStatus === selectedStatus);
     }
     
-    return filtered.filter((e) => {
+    filtered = filtered.filter((e) => {
         if (filterValue === undefined || filterValue === '' || filterValue === 'Todos') return true;
 
         switch (filterField) {
@@ -169,16 +220,46 @@ export function ExpenseDashboard() {
                 return true;
         }
     });
-  }, [expensesWithDynamicStatus, filterField, filterValue, selectedStatus]);
+
+    return filtered.sort((a, b) => {
+        let compareA, compareB;
+        
+        switch (sortField) {
+            case 'vencimento':
+                compareA = parseISO(a.vencimento).getTime();
+                compareB = parseISO(b.vencimento).getTime();
+                break;
+            case 'valor':
+                compareA = a.valor;
+                compareB = b.valor;
+                break;
+            case 'nome':
+                compareA = a.nome;
+                compareB = b.nome;
+                break;
+            default:
+                return 0;
+        }
+
+        if (compareA < compareB) {
+            return sortDirection === 'asc' ? -1 : 1;
+        }
+        if (compareA > compareB) {
+            return sortDirection === 'asc' ? 1 : -1;
+        }
+        return 0;
+    });
+
+  }, [expensesWithDynamicStatus, filterField, filterValue, selectedStatus, sortField, sortDirection]);
   
   useEffect(() => {
     setCurrentPage(1);
-  }, [itemsPerPage, filterField, filterValue, selectedStatus]);
+  }, [itemsPerPage, filterField, filterValue, selectedStatus, sortField, sortDirection]);
 
-  const totalPages = Math.ceil(filteredExpenses.length / itemsPerPage) || 1;
+  const totalPages = Math.ceil(sortedAndFilteredExpenses.length / itemsPerPage) || 1;
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentExpenses = filteredExpenses.slice(indexOfFirstItem, indexOfLastItem);
+  const currentExpenses = sortedAndFilteredExpenses.slice(indexOfFirstItem, indexOfLastItem);
 
   const totalAmount = useMemo(() => {
     return currentExpenses.reduce((sum, expense) => sum + expense.valor, 0);
@@ -270,6 +351,7 @@ export function ExpenseDashboard() {
                 title="Vencidos"
                 icon={<AlertTriangle className="h-5 w-5" />}
                 count={statusCounts.overdue}
+                total={statusTotals.overdue}
                 status="overdue"
                 isSelected={selectedStatus === 'overdue'}
                 onClick={() => handleStatusCardClick('overdue')}
@@ -278,6 +360,7 @@ export function ExpenseDashboard() {
                 title="Vencendo"
                 icon={<Hourglass className="h-5 w-5" />}
                 count={statusCounts['due-soon']}
+                total={statusTotals['due-soon']}
                 status="due-soon"
                 isSelected={selectedStatus === 'due-soon'}
                 onClick={() => handleStatusCardClick('due-soon')}
@@ -288,6 +371,7 @@ export function ExpenseDashboard() {
                 title="A vencer"
                 icon={<Receipt className="h-5 w-5" />}
                 count={statusCounts.due}
+                total={statusTotals.due}
                 status="due"
                 isSelected={selectedStatus === 'due'}
                 onClick={() => handleStatusCardClick('due')}
@@ -296,6 +380,7 @@ export function ExpenseDashboard() {
                 title="Pagos"
                 icon={<CheckCircle2 className="h-5 w-5" />}
                 count={statusCounts.paid}
+                total={statusTotals.paid}
                 status="paid"
                 isSelected={selectedStatus === 'paid'}
                 onClick={() => handleStatusCardClick('paid')}
@@ -308,12 +393,32 @@ export function ExpenseDashboard() {
           </div>
         )}
         <div className="flex flex-col space-y-4 p-6">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                <h3 className="font-headline text-2xl font-semibold leading-none tracking-tight w-full sm:w-auto">
+            <div>
+                 <h3 className="font-headline text-2xl font-semibold leading-none tracking-tight w-full sm:w-auto">
                     Despesas
                 </h3>
-                <div className="flex items-center gap-4 w-full sm:w-auto flex-wrap">
+            </div>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+               
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto flex-wrap">
                     <div className="flex items-center gap-2">
+                         <Label className="text-muted-foreground whitespace-nowrap">Ordenar por:</Label>
+                        <Select value={sortField} onValueChange={(value) => setSortField(value as SortField)}>
+                            <SelectTrigger className="w-full sm:w-40">
+                                <SelectValue placeholder="Ordenar por..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="vencimento">Vencimento</SelectItem>
+                                <SelectItem value="valor">Valor</SelectItem>
+                                <SelectItem value="nome">Nome</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <Button variant="outline" size="icon" onClick={() => setSortDirection(d => d === 'asc' ? 'desc' : 'asc')}>
+                           {sortDirection === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
+                           <span className="sr-only">Toggle Sort Direction</span>
+                        </Button>
+                    </div>
+                     <div className="flex items-center gap-2">
                         <Filter className="h-4 w-4 text-muted-foreground" />
                         <Select value={filterField} onValueChange={(value) => setFilterField(value as FilterField)}>
                             <SelectTrigger className="w-full sm:w-48">
@@ -340,7 +445,7 @@ export function ExpenseDashboard() {
         <div className="p-6 pt-0">
           <AnimatePresence mode="wait">
             <motion.div
-              key={currentPage + itemsPerPage + filterField + String(filterValue) + selectedStatus}
+              key={currentPage + itemsPerPage + filterField + String(filterValue) + selectedStatus + sortField + sortDirection}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
@@ -376,7 +481,7 @@ export function ExpenseDashboard() {
             </motion.div>
           </AnimatePresence>
         </div>
-        {filteredExpenses.length > 0 && (
+        {sortedAndFilteredExpenses.length > 0 && (
           <div className="flex items-center justify-between border-t p-4">
             <div className="flex items-center gap-2">
               <Label htmlFor="items-per-page" className="text-sm text-muted-foreground">Itens por página:</Label>

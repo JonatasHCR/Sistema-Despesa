@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -11,9 +12,14 @@ export default function PageWrapper({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     const session = localStorage.getItem('userSession');
-    if (!session && pathname !== '/login') {
+    const isAuthPage = pathname === '/login';
+
+    if (!session && !isAuthPage) {
       router.replace('/login');
-    } else {
+    } else if (session && isAuthPage) {
+      router.replace('/');
+    }
+    else {
       setIsVerifying(false);
     }
   }, [router, pathname]);
