@@ -1,4 +1,3 @@
-
 import uvicorn
 from app.core.database import Base, engine
 
