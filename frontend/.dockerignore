@@ -1,0 +1,29 @@
+# dependências locais
+node_modules/
+.pnp/
+.pnp.js
+.pnpm-store/
+
+# build do Next
+.next/
+out/
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# sistema
+.DS_Store
+*.swp
+
+# ambiente
+.env
+.env.*
+!.env.example
+
+# caches
+.cache/
+.next/cache/

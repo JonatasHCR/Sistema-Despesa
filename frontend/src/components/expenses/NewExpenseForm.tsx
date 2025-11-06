@@ -72,6 +72,19 @@ export function NewExpenseForm() {
     if (session) {
       const userData: User = JSON.parse(session);
       setUser(userData);
+      // Initialize form with user ID once user is loaded
+      form.reset({
+        nome: '',
+        despesas: [
+          {
+            valor: '',
+            vencimento: new Date(),
+            tipo: '',
+            status: 'P',
+            user_id: userData.id,
+          },
+        ],
+      });
     } else {
         router.replace('/login');
     }
@@ -81,15 +94,7 @@ export function NewExpenseForm() {
     resolver: zodResolver(expenseFormSchema),
     defaultValues: {
       nome: '',
-      despesas: [
-        {
-          valor: '',
-          vencimento: new Date(),
-          tipo: '',
-          status: 'P',
-          user_id: user?.id ?? 0, // será atualizado no useEffect
-        },
-      ],
+      despesas: [],
     },
   });
 
@@ -97,12 +102,6 @@ export function NewExpenseForm() {
     control: form.control,
     name: "despesas"
   });
-
-  useEffect(() => {
-    if (user && form.getValues('despesas.0.user_id') === 0) {
-      form.setValue('despesas.0.user_id', user.id);
-    }
-  }, [user, form]);
   
   useEffect(() => {
     async function fetchData() {
@@ -164,6 +163,13 @@ export function NewExpenseForm() {
     }
   };
 
+  const handleTypeChange = (value: string, onChange: (value: string) => void) => {
+    onChange(value);
+    if (value && !expenseTypes.includes(value)) {
+      setExpenseTypes(prev => [...prev, value]);
+    }
+  };
+
   const addExpenseField = () => {
     if (user) {
         const despesas = form.getValues('despesas');
@@ -179,6 +185,14 @@ export function NewExpenseForm() {
         });
     }
   };
+
+  if (!user) {
+    return (
+        <div className="flex h-screen w-full items-center justify-center">
+            <Loader className="h-8 w-8 animate-spin text-primary" />
+        </div>
+    );
+  }
 
   return (
     <Card>
@@ -276,7 +290,7 @@ export function NewExpenseForm() {
                                     <Combobox
                                         options={typeOptions}
                                         value={field.value}
-                                        onChange={field.onChange}
+                                        onChange={(value) => handleTypeChange(value, field.onChange)}
                                         placeholder="Selecione ou crie um tipo"
                                         searchPlaceholder="Pesquisar ou criar..."
                                         emptyMessage="Nenhum tipo encontrado. Crie um novo."

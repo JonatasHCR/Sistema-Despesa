@@ -1,10 +1,21 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 
 from app.api.version_1.endpoints.despesa import DespesaEndpoint
 from app.api.version_1.endpoints.user import UserEndpoint
 from app.api.version_1.endpoints.auth import AuthEndpoint
 
+from app.core.database import Base, engine
+
+async def create_tables():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await create_tables()
+    yield  # app running
 
 app = FastAPI(
     title="Organizador de Finanças API",
@@ -16,27 +27,15 @@ app = FastAPI(
         {"name": "Despesa", "description": "Operações com Despesas"},
         {"name": "Auth", "description": "Operações de Autenticação"},
     ],
+    lifespan=lifespan
 )
-
-origins = [
-    "http://localhost",
-    "http://localhost:9002",
-    "http://localhost:3000",
-    "http://127.0.0.1",
-    "http://127.0.0.1:9002",
-    "http://127.0.0.1:3000",
-    "http://10.0.0.199",
-    "http://10.0.0.199:9002",
-    "http://10.0.0.199:3000",
-]
-
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=True,
 )
 
 app.include_router(UserEndpoint().router)

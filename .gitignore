@@ -299,3 +299,11 @@ pyrightconfig.json
 
 # End of https://www.toptal.com/developers/gitignore/api/python,flask,nextjs
 
+backup/
+
+postrgress_data/
+postgres_data/
+
+.env
+
+restore_db.ps1

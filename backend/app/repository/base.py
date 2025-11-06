@@ -13,9 +13,9 @@ class BaseRepository(Generic[Model]):
         self.model = model
         self.__db = db
 
-    async def get_all(self, limit: int = 15, offset: int = 0) -> list[Model]:
+    async def get_all(self) -> list[Model]:
         busca = await self.__db.execute(
-            select(self.model).limit(limit).offset(offset)
+            select(self.model)
         )
         busca = busca.scalars().all()
 

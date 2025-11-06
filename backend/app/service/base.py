@@ -17,8 +17,8 @@ class BaseService(Generic[Repository, InputShema, OutputSchema]):
         self.repository = repository(db)
         self.output_schema = output_schema
 
-    async def get_all(self, limit: int, offset: int) -> list[OutputSchema]:
-        busca = await self.repository.get_all(limit, offset)
+    async def get_all(self) -> list[OutputSchema]:
+        busca = await self.repository.get_all()
 
         return [self.output_schema.model_validate(objeto) for objeto in busca]
 

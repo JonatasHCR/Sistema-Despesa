@@ -1,7 +1,7 @@
 
 'use client';
 
-import { type ReactNode, type MouseEvent, useState, useEffect, useCallback } from 'react';
+import { type ReactNode, type MouseEvent } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { cn } from '../../lib/utils';
 import { type DynamicExpenseStatus } from '../../lib/types';
@@ -29,13 +29,6 @@ const statusStyles: Record<DynamicExpenseStatus, { text: string }> = {
 
 export function StatusCard({ title, count, total, icon, status, isSelected, onClick, dueSoonDays, setDueSoonDays }: StatusCardProps) {
   const styles = statusStyles[status];
-  const [inputValue, setInputValue] = useState(String(dueSoonDays ?? ''));
-
-  useEffect(() => {
-    if (dueSoonDays !== undefined && String(dueSoonDays) !== inputValue) {
-      setInputValue(String(dueSoonDays));
-    }
-  }, [dueSoonDays, inputValue]);
 
   const handleContainerClick = () => {
     onClick();
@@ -44,26 +37,11 @@ export function StatusCard({ title, count, total, icon, status, isSelected, onCl
   const handleInputClick = (e: MouseEvent) => {
     e.stopPropagation();
   }
-
-  const updateDueSoonDays = useCallback(() => {
-    if (setDueSoonDays) {
-      const value = inputValue === '' ? 0 : parseInt(inputValue, 10);
-      const finalValue = Math.max(0, isNaN(value) ? (dueSoonDays ?? 0) : value);
-      setDueSoonDays(finalValue);
-      if (String(finalValue) !== inputValue) {
-          setInputValue(String(finalValue));
-      }
-    }
-  }, [setDueSoonDays, inputValue, dueSoonDays]);
   
   const handleDueSoonDaysChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInputValue(e.target.value);
-  }
-  
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      updateDueSoonDays();
-      e.currentTarget.blur();
+    if (setDueSoonDays) {
+        const value = parseInt(e.target.value, 10);
+        setDueSoonDays(isNaN(value) || value < 0 ? 0 : value);
     }
   }
 
@@ -92,10 +70,8 @@ export function StatusCard({ title, count, total, icon, status, isSelected, onCl
             <Input
                 id="due-soon-days"
                 type="number"
-                value={inputValue}
+                value={dueSoonDays ?? ''}
                 onChange={handleDueSoonDaysChange}
-                onBlur={updateDueSoonDays}
-                onKeyDown={handleKeyDown}
                 className="h-8 w-20"
                 min="0"
             />

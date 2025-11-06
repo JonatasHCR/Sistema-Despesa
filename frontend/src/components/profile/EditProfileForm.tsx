@@ -20,7 +20,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Loader, Eye, EyeOff } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { type User } from '@/lib/types';
-import { updateUser } from '@/lib/api';
+import { updateUser, signIn } from '@/lib/api';
 
 const profileFormSchema = z.object({
   nome: z.string().min(2, {
@@ -31,15 +31,6 @@ const profileFormSchema = z.object({
   }),
   senhaAtual: z.string().optional(),
   novaSenha: z.string().optional(),
-}).refine(data => {
-  // Se novaSenha for preenchida, senhaAtual é obrigatória.
-  if (data.novaSenha && !data.senhaAtual) {
-    return false;
-  }
-  return true;
-}, {
-  message: 'Por favor, insira sua senha atual para definir uma nova.',
-  path: ['senhaAtual'],
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
@@ -82,7 +73,33 @@ export function EditProfileForm() {
   async function onSubmit(data: ProfileFormValues) {
     if (!user) return;
     setIsSubmitting(true);
+    
     try {
+      // If user wants to change password, first verify the current one
+      if (data.novaSenha) {
+        if (!data.senhaAtual) {
+            toast({
+                variant: 'destructive',
+                title: 'Atenção',
+                description: 'Por favor, informe sua senha atual para definir uma nova.',
+            });
+            setIsSubmitting(false);
+            return;
+        }
+
+        try {
+            await signIn({ nome: user.nome, senha: data.senhaAtual });
+        } catch (error) {
+            toast({
+                variant: 'destructive',
+                title: 'Erro de Autenticação',
+                description: 'A senha atual está incorreta.',
+            });
+            setIsSubmitting(false);
+            return;
+        }
+      }
+      
       const updateData: Partial<User> & { senha?: string } = {
         nome: data.nome,
         email: data.email,
@@ -92,13 +109,17 @@ export function EditProfileForm() {
         updateData.senha = data.novaSenha;
       }
       
-      await updateUser(user.id, updateData, data.senhaAtual);
+      const updatedUser = await updateUser(user.id, updateData);
+
+      // Update user session with new details
+      const newSessionData = { ...user, ...updatedUser };
+      localStorage.setItem('userSession', JSON.stringify(newSessionData));
+      setUser(newSessionData);
 
       toast({
         title: 'Sucesso!',
         description: 'Seu perfil foi atualizado.',
       });
-      // We don't need to redirect, but we can refresh to ensure header updates
       router.refresh();
     } catch (error) {
       toast({
@@ -166,7 +187,7 @@ export function EditProfileForm() {
                     <div className="relative">
                       <Input
                         type={showCurrentPassword ? 'text' : 'password'}
-                        placeholder="Sua senha atual"
+                        placeholder="Informe para alterar a senha"
                         {...field}
                       />
                       <Button

@@ -5,7 +5,7 @@ from app.core.settings import Settings
 import asyncio
 
 
-DATABASE_URL = Settings().DATABASE_URL
+DATABASE_URL = Settings().database_url()
 
 
 Base = declarative_base()

@@ -1,0 +1,42 @@
+# Bytecode & cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual envs
+venv/
+.venv/
+env/
+.env/
+*.egg-info/
+.eggs/
+
+# Package builds
+build/
+dist/
+*.egg
+
+# Editor dirs & files
+.vscode/
+.idea/
+*.swp
+
+# OS files
+.DS_Store
+
+# Python cache dirs
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Docker/Pip cache
+pip-wheel-metadata/
+__pypackages__/
+*.whl
+
+# Environment variables
+.env
+.env.*
+!.env.example

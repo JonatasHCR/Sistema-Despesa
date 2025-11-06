@@ -46,10 +46,10 @@ class UserEndpoint:
             )
 
     async def _get_all(
-        self, limit: int = 15, offset: int = 0, db: AsyncSession = Depends(get_db)
+        self, db: AsyncSession = Depends(get_db)
     ) -> list[UserOutputSchema]:
         service = self.service(db)
-        return await service.get_all(limit=limit, offset=offset)
+        return await service.get_all()
 
     async def _create(
         self, schema: UserSchema, db: AsyncSession = Depends(get_db)
