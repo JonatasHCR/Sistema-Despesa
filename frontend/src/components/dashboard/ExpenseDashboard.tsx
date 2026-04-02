@@ -87,7 +87,6 @@ export function ExpenseDashboard() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   const fetchAndSetExpenses = useCallback(async () => {
-    // Keep loading indicator only for the first load.
     if (rawExpenses.length === 0) {
       setIsLoading(true);
     }
@@ -107,9 +106,9 @@ export function ExpenseDashboard() {
 
     const interval = setInterval(() => {
         fetchAndSetExpenses();
-    }, 5000); // Poll every 5 seconds
+    }, 5000);
 
-    return () => clearInterval(interval); // Cleanup interval on component unmount
+    return () => clearInterval(interval);
   }, [fetchAndSetExpenses]);
 
   const expensesWithDynamicStatus = useMemo(() => {
@@ -121,10 +120,7 @@ export function ExpenseDashboard() {
   
   useEffect(() => {
     const showNotifications = async () => {
-      if (!('Notification' in window)) {
-        console.log("This browser does not support desktop notification");
-        return;
-      }
+      if (!('Notification' in window)) return;
 
       if (Notification.permission === 'granted') {
         const relevantExpenses = expensesWithDynamicStatus.filter(
@@ -140,7 +136,7 @@ export function ExpenseDashboard() {
       } else if (Notification.permission !== 'denied') {
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
-          showNotifications(); // Retry showing notifications after permission is granted
+          showNotifications();
         }
       }
     };
@@ -198,7 +194,10 @@ export function ExpenseDashboard() {
   const sortedAndFilteredExpenses = useMemo(() => {
     let filtered = expensesWithDynamicStatus;
 
-    if (selectedStatus !== 'all') {
+    // Se "Todos" estiver selecionado, removemos as pagas por padrão
+    if (selectedStatus === 'all') {
+        filtered = filtered.filter(e => e.dynamicStatus !== 'paid');
+    } else {
         filtered = filtered.filter(e => e.dynamicStatus === selectedStatus);
     }
     
@@ -221,7 +220,24 @@ export function ExpenseDashboard() {
         }
     });
 
+    // Mapeamento de prioridade: Vencidas (0), A Vencer (1), Vencendo (2), Pagas (3)
+    const statusPriority: Record<DynamicExpenseStatus, number> = {
+        'overdue': 0,
+        'due': 1,
+        'due-soon': 2,
+        'paid': 3
+    };
+
     return filtered.sort((a, b) => {
+        const pA = statusPriority[a.dynamicStatus!];
+        const pB = statusPriority[b.dynamicStatus!];
+
+        // Prioridade por status primeiro
+        if (pA !== pB) {
+            return pA - pB;
+        }
+
+        // Ordenação secundária (campo selecionado pelo usuário)
         let compareA, compareB;
         
         switch (sortField) {
@@ -395,7 +411,7 @@ export function ExpenseDashboard() {
         <div className="flex flex-col space-y-4 p-6">
             <div>
                  <h3 className="font-headline text-2xl font-semibold leading-none tracking-tight w-full sm:w-auto">
-                    Despesas
+                    {selectedStatus === 'paid' ? 'Despesas Pagas' : 'Minhas Despesas'}
                 </h3>
             </div>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -471,10 +487,10 @@ export function ExpenseDashboard() {
                         <Ban className="h-12 w-12 text-muted-foreground" />
                     </div>
                     <p className="font-headline text-lg font-medium text-muted-foreground">
-                        Nenhuma despesa encontrada
+                        Nenhuma despesa pendente
                     </p>
                     <p className="max-w-xs text-sm text-muted-foreground">
-                        Tente ajustar seus filtros ou cadastre uma nova despesa.
+                        Tudo em dia! Clique nos cards de status acima para ver outros grupos ou cadastre uma nova despesa.
                     </p>
                 </div>
               )}
