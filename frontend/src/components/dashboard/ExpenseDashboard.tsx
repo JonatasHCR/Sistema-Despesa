@@ -1,24 +1,23 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { type Expense, type ExpenseStatus, type DynamicExpenseStatus } from '../../lib/types';
+import { type Expense, type ExpenseStatus, type DynamicExpenseStatus } from '@/lib/types';
 import { ExpenseCard } from './ExpenseCard';
 import { StatusCard } from './StatusCard';
 import { Ban, Loader, ChevronLeft, ChevronRight, Search, Filter, CalendarIcon, Receipt, Hourglass, AlertTriangle, CheckCircle2, ArrowUp, ArrowDown } from 'lucide-react';
-import { Skeleton } from '../ui/skeleton';
-import { Card } from '../ui/card';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { Calendar } from '../ui/calendar';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { format, isSameDay, parseISO, differenceInDays, isPast, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { cn } from '../../lib/utils';
-import { getExpenses } from '../../lib/api';
+import { cn } from '@/lib/utils';
+import { getExpenses } from '@/lib/api';
 
 type FilterField = 'nome' | 'tipo' | 'vencimento' | 'userName' | 'status';
 type SortField = 'vencimento' | 'valor' | 'nome';
@@ -118,36 +117,6 @@ export function ExpenseDashboard() {
     }));
   }, [rawExpenses, dueSoonDays]);
   
-  useEffect(() => {
-    const showNotifications = async () => {
-      if (!('Notification' in window)) return;
-
-      if (Notification.permission === 'granted') {
-        const relevantExpenses = expensesWithDynamicStatus.filter(
-          e => e.dynamicStatus === 'overdue' || e.dynamicStatus === 'due-soon'
-        );
-
-        relevantExpenses.forEach(expense => {
-          const title = expense.dynamicStatus === 'overdue' ? 'Despesa Vencida!' : 'Despesa Próxima ao Vencimento!';
-          const body = `${expense.nome} - ${expense.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
-          new Notification(title, { body });
-        });
-
-      } else if (Notification.permission !== 'denied') {
-        const permission = await Notification.requestPermission();
-        if (permission === 'granted') {
-          showNotifications();
-        }
-      }
-    };
-    
-    if(expensesWithDynamicStatus.length > 0) {
-        showNotifications();
-    }
-
-  }, [expensesWithDynamicStatus]);
-
-
   const { statusCounts, statusTotals } = useMemo(() => {
     const initial = {
         statusCounts: { overdue: 0, 'due-soon': 0, due: 0, paid: 0 } as Record<DynamicExpenseStatus, number>,
@@ -194,7 +163,6 @@ export function ExpenseDashboard() {
   const sortedAndFilteredExpenses = useMemo(() => {
     let filtered = expensesWithDynamicStatus;
 
-    // Se "Todos" estiver selecionado, removemos as pagas por padrão
     if (selectedStatus === 'all') {
         filtered = filtered.filter(e => e.dynamicStatus !== 'paid');
     } else {
@@ -220,11 +188,11 @@ export function ExpenseDashboard() {
         }
     });
 
-    // Mapeamento de prioridade: Vencidas (0), A Vencer (1), Vencendo (2), Pagas (3)
+    // Mapeamento de prioridade: Vencendo (Amarelas - 0), A Vencer (Verdes - 1), Vencidas (Vermelhas - 2), Pagas (3)
     const statusPriority: Record<DynamicExpenseStatus, number> = {
-        'overdue': 0,
+        'due-soon': 0,
         'due': 1,
-        'due-soon': 2,
+        'overdue': 2,
         'paid': 3
     };
 
@@ -232,12 +200,10 @@ export function ExpenseDashboard() {
         const pA = statusPriority[a.dynamicStatus!];
         const pB = statusPriority[b.dynamicStatus!];
 
-        // Prioridade por status primeiro
         if (pA !== pB) {
             return pA - pB;
         }
 
-        // Ordenação secundária (campo selecionado pelo usuário)
         let compareA, compareB;
         
         switch (sortField) {
@@ -364,15 +330,6 @@ export function ExpenseDashboard() {
     <div className="flex flex-col gap-8">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <StatusCard 
-                title="Vencidos"
-                icon={<AlertTriangle className="h-5 w-5" />}
-                count={statusCounts.overdue}
-                total={statusTotals.overdue}
-                status="overdue"
-                isSelected={selectedStatus === 'overdue'}
-                onClick={() => handleStatusCardClick('overdue')}
-            />
-            <StatusCard 
                 title="Vencendo"
                 icon={<Hourglass className="h-5 w-5" />}
                 count={statusCounts['due-soon']}
@@ -391,6 +348,15 @@ export function ExpenseDashboard() {
                 status="due"
                 isSelected={selectedStatus === 'due'}
                 onClick={() => handleStatusCardClick('due')}
+            />
+            <StatusCard 
+                title="Vencidos"
+                icon={<AlertTriangle className="h-5 w-5" />}
+                count={statusCounts.overdue}
+                total={statusTotals.overdue}
+                status="overdue"
+                isSelected={selectedStatus === 'overdue'}
+                onClick={() => handleStatusCardClick('overdue')}
             />
             <StatusCard 
                 title="Pagos"

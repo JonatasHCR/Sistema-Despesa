@@ -1,5 +1,5 @@
 from datetime import date
-from typing import Literal
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 
@@ -13,6 +13,7 @@ class DespesaSchema(BaseModel):
     )
     vencimento: date = Field(..., description="Data de vencimento da despesa")
     valor: float = Field(..., gt=0, description="Valor da despesa")
+    descricao: Optional[str] = Field("PARCELA ÚNICA", max_length=20, description="Descrição da despesa")
     user_id: int = Field(..., gt=0, description="Usuário que está relacionado")
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)

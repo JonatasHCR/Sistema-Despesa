@@ -1,10 +1,9 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { Button } from '../ui/button';
+import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
@@ -12,23 +11,23 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '../ui/form';
-import { Input } from '../ui/input';
-import { useToast } from '../../hooks/use-toast';
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardFooter } from '../ui/card';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Loader } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon } from 'lucide-react';
-import { Calendar } from '../ui/calendar';
-import { cn } from '../../lib/utils';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 import { format, parseISO, formatISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { type Expense } from '../../lib/types';
-import { updateExpense, getExpenses } from '../../lib/api';
-import { Combobox } from '../ui/combobox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { type Expense } from '@/lib/types';
+import { updateExpense, getExpenses } from '@/lib/api';
+import { Combobox } from '@/components/ui/combobox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const expenseFormSchema = z.object({
   nome: z.string().min(2, {
@@ -47,6 +46,7 @@ const expenseFormSchema = z.object({
   tipo: z.string().min(1, {
     message: 'Selecione ou crie um tipo de despesa.',
   }),
+  descricao: z.string().max(20, 'Máximo 20 caracteres').optional(),
   status: z.enum(['P', 'Q']),
   user_id: z.number().int().positive({
     message: 'ID do usuário é inválido.'
@@ -84,6 +84,7 @@ export function EditExpenseForm({ expense }: { expense: Expense }) {
       ...expense,
       valor: String(expense.valor).replace('.', ','),
       vencimento: parseISO(expense.vencimento),
+      descricao: expense.descricao || 'PARCELA ÚNICA',
       userName: expense.userName || String(expense.user_id),
     },
   });
@@ -257,19 +258,34 @@ export function EditExpenseForm({ expense }: { expense: Expense }) {
                     )}
                     />
             </div>
-            <FormField
-              control={form.control}
-              name="userName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Usuário</FormLabel>
-                  <FormControl>
-                    <Input type="text" placeholder="Nome do usuário" {...field} disabled />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                 <FormField
+                  control={form.control}
+                  name="descricao"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Descrição (Max 20 carac.)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="PARCELA ÚNICA" maxLength={20} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="userName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Usuário</FormLabel>
+                      <FormControl>
+                        <Input type="text" placeholder="Nome do usuário" {...field} disabled />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+            </div>
           </CardContent>
           <CardFooter className="flex justify-end gap-4">
             <Button type="button" variant="outline" onClick={() => router.back()}>

@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, User, LogOut, Settings } from 'lucide-react';
+import { PlusCircle, User, LogOut, Settings, FileText, LayoutDashboard } from 'lucide-react';
 import { type User as UserType } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import {
@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 interface HeaderProps {
     title: string;
@@ -25,6 +26,7 @@ interface HeaderProps {
 
 export default function Header({ title, subtitle, showNewExpenseButton = false }: HeaderProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [user, setUser] = useState<UserType | null>(null);
 
   useEffect(() => {
@@ -49,17 +51,31 @@ export default function Header({ title, subtitle, showNewExpenseButton = false }
   };
 
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex flex-col gap-1">
-        <h1 className="font-headline text-2xl font-bold md:text-3xl">
-          {title}
-        </h1>
-        <p className="text-muted-foreground">{subtitle}</p>
-      </div>
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="font-headline text-2xl font-bold md:text-3xl">
+            {title}
+          </h1>
+          <p className="text-muted-foreground">{subtitle}</p>
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+        {pathname !== '/' && (
+            <Button variant="outline" onClick={() => router.push('/')}>
+                <LayoutDashboard className="h-4 w-4" />
+                <span className="hidden sm:inline">Dashboard</span>
+            </Button>
+        )}
+        {pathname !== '/reports' && (
+            <Button variant="outline" onClick={() => router.push('/reports')}>
+                <FileText className="h-4 w-4" />
+                <span className="hidden sm:inline">Relatórios</span>
+            </Button>
+        )}
         {showNewExpenseButton && (
             <Button onClick={() => router.push('/expenses/new')}>
-                <PlusCircle />
+                <PlusCircle className="h-4 w-4" />
                 <span>Nova Despesa</span>
             </Button>
         )}

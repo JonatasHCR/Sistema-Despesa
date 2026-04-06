@@ -1,9 +1,10 @@
+
 from fastapi import Depends, HTTPException, APIRouter
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.service.user import UserService
-from app.schema.user import UserSchema, UserOutputSchema
+from app.schema.user import UserSchema, UserOutputSchema, UserUpdateSchema
 
 
 class UserEndpoint:
@@ -59,7 +60,7 @@ class UserEndpoint:
         return await service.create(schema)
 
     async def _update(
-        self, id: int, schema: UserSchema, db: AsyncSession = Depends(get_db)
+        self, id: int, schema: UserUpdateSchema, db: AsyncSession = Depends(get_db)
     ) -> UserOutputSchema:
         service = self.service(db)
         try:
@@ -71,6 +72,9 @@ class UserEndpoint:
                     id=id, objeto="User"
                 ),
             )
+        except HTTPException as error:
+            raise error
+
 
     async def _delete(self, id: int, db: AsyncSession = Depends(get_db)) -> None:
         service = self.service(db)

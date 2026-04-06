@@ -8,6 +8,7 @@ instance/*
 .webassets-cache
 .env.teste
 .env.producao
+backup.sql
 
 ### Flask.Python Stack ###
 # Byte-compiled / optimized / DLL files

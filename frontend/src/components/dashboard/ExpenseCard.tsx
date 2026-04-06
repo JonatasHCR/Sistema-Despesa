@@ -1,15 +1,14 @@
-
 'use client';
 
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../ui/card';
-import { Button } from '../ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
-import { type Expense, type ExpenseStatus } from '../../lib/types';
-import { CalendarDays, MoreVertical, Pencil, User, Loader, Trash2, Check, X } from 'lucide-react';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { type Expense, type ExpenseStatus } from '@/lib/types';
+import { CalendarDays, MoreVertical, Pencil, User, Loader, Trash2, Check, X, FileText } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { cn } from '../../lib/utils';
-import { Badge } from '../ui/badge';
+import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import {
   AlertDialog,
@@ -21,10 +20,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "../ui/alert-dialog"
+} from "@/components/ui/alert-dialog"
 import { useState } from 'react';
-import { useToast } from '../../hooks/use-toast';
-import { deleteExpense, updateExpense } from '../../lib/api';
+import { useToast } from '@/hooks/use-toast';
+import { deleteExpense, updateExpense } from '@/lib/api';
 
 interface ExpenseCardProps {
   expense: Expense;
@@ -159,6 +158,12 @@ export function ExpenseCard({ expense, onUpdate }: ExpenseCardProps) {
       <CardContent className="flex-grow pt-0">
             <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2">
+                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                        <FileText className="h-4 w-4" />
+                        <span className="font-medium text-foreground">
+                            {expense.descricao || "PARCELA ÚNICA"}
+                        </span>
+                    </div>
                     <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                         <CalendarDays className="h-4 w-4" />
                         <span>

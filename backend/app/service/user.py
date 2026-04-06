@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
 
-from app.schema.user import UserOutputSchema, UserSchema
+from app.schema.user import UserOutputSchema, UserSchema, UserUpdateSchema
 from app.repository.user import UserRepository
 from .base import BaseService
 
@@ -18,7 +18,7 @@ class UserService(BaseService[UserRepository, UserSchema, UserOutputSchema]):
         busca = await self.repository.get_by_username(username)
         return UserOutputSchema.model_validate(busca)
 
-    async def update(self, id: int, schema: UserSchema) -> UserOutputSchema:
+    async def update(self, id: int, schema: UserUpdateSchema) -> UserOutputSchema:
         update_data = schema.model_dump(exclude_unset=True)
         
         # If password is not being updated, remove it from the dict

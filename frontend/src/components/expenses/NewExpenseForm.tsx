@@ -4,7 +4,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { z } from 'zod';
-import { Button } from '../ui/button';
+import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
@@ -12,23 +12,23 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '../ui/form';
-import { Input } from '../ui/input';
-import { useToast } from '../../hooks/use-toast';
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardFooter } from '../ui/card';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Loader, PlusCircle, Trash2, CalendarIcon } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { Calendar } from '../ui/calendar';
-import { cn } from '../../lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 import { format, formatISO, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { addExpense, getExpenses } from '../../lib/api';
-import { type User, type Expense } from '../../lib/types';
-import { Combobox } from '../ui/combobox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Separator } from '../ui/separator';
+import { addExpense, getExpenses } from '@/lib/api';
+import { type User, type Expense } from '@/lib/types';
+import { Combobox } from '@/components/ui/combobox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 
 const singleExpenseSchema = z.object({
   valor: z.string().refine((val) => {
@@ -44,6 +44,7 @@ const singleExpenseSchema = z.object({
   tipo: z.string().min(1, {
     message: 'Selecione ou crie um tipo de despesa.',
   }),
+  descricao: z.string().max(20, 'Máximo 20 caracteres').optional(),
   status: z.enum(['P', 'Q'], {
     required_error: 'O status é obrigatório.',
   }),
@@ -72,19 +73,6 @@ export function NewExpenseForm() {
     if (session) {
       const userData: User = JSON.parse(session);
       setUser(userData);
-      // Initialize form with user ID once user is loaded
-      form.reset({
-        nome: '',
-        despesas: [
-          {
-            valor: '',
-            vencimento: new Date(),
-            tipo: '',
-            status: 'P',
-            user_id: userData.id,
-          },
-        ],
-      });
     } else {
         router.replace('/login');
     }
@@ -94,14 +82,48 @@ export function NewExpenseForm() {
     resolver: zodResolver(expenseFormSchema),
     defaultValues: {
       nome: '',
-      despesas: [],
+      despesas: [
+        {
+          valor: '',
+          vencimento: new Date(),
+          tipo: '',
+          descricao: 'PARCELA ÚNICA',
+          status: 'P',
+          user_id: 0,
+        },
+      ],
     },
   });
+
+  useEffect(() => {
+    if (user) {
+      const despesas = form.getValues('despesas');
+      if (despesas.length > 0 && despesas[0].user_id === 0) {
+        form.setValue('despesas.0.user_id', user.id);
+      }
+    }
+  }, [user, form]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "despesas"
   });
+
+  // Automatically update descriptions based on installments
+  useEffect(() => {
+    const total = fields.length;
+    if (total > 1) {
+      fields.forEach((_, index) => {
+        form.setValue(`despesas.${index}.descricao`, `PARCELA ${index + 1}/${total}`);
+      });
+    } else if (total === 1) {
+      const currentDesc = form.getValues('despesas.0.descricao');
+      // Only reset to 'PARCELA ÚNICA' if it was part of a sequence
+      if (currentDesc?.startsWith('PARCELA ') && currentDesc?.includes('/')) {
+        form.setValue('despesas.0.descricao', 'PARCELA ÚNICA');
+      }
+    }
+  }, [fields.length, form]);
   
   useEffect(() => {
     async function fetchData() {
@@ -115,7 +137,7 @@ export function NewExpenseForm() {
             }
         } catch (error) {
             console.error("Failed to fetch expense data:", error);
-            setExpenseTypes(['BOLETO', 'NOTA']); // Fallback
+            setExpenseTypes(['BOLETO', 'NOTA']); 
         }
     }
     fetchData();
@@ -129,6 +151,8 @@ export function NewExpenseForm() {
       const expensesToCreate = data.despesas.map(d => ({
         ...d,
         nome: data.nome,
+        descricao: d.descricao || "PARCELA ÚNICA",
+        user_id: user.id,
         vencimento: formatISO(d.vencimento),
       }));
 
@@ -163,8 +187,8 @@ export function NewExpenseForm() {
     }
   };
 
-  const handleTypeChange = (value: string, onChange: (value: string) => void) => {
-    onChange(value);
+  const handleTypeChange = (value: string, index: number) => {
+    form.setValue(`despesas.${index}.tipo`, value);
     if (value && !expenseTypes.includes(value)) {
       setExpenseTypes(prev => [...prev, value]);
     }
@@ -180,6 +204,7 @@ export function NewExpenseForm() {
             valor: lastExpense?.valor || '',
             vencimento: newVencimento,
             tipo: lastExpense?.tipo || '',
+            descricao: 'PARCELA ÚNICA', // Will be updated by useEffect
             status: 'P',
             user_id: user.id
         });
@@ -238,6 +263,21 @@ export function NewExpenseForm() {
                                 </FormItem>
                             )}
                         />
+                         <FormField
+                            control={form.control}
+                            name={`despesas.${index}.descricao`}
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Descrição (Max 20 carac.)</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="PARCELA ÚNICA" maxLength={20} {...field} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                         <Controller
                             control={form.control}
                             name={`despesas.${index}.vencimento`}
@@ -279,9 +319,7 @@ export function NewExpenseForm() {
                                 </FormItem>
                             )}
                         />
-                    </div>
-                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                        <Controller
+                         <Controller
                             control={form.control}
                             name={`despesas.${index}.tipo`}
                             render={({ field }) => (
@@ -290,7 +328,7 @@ export function NewExpenseForm() {
                                     <Combobox
                                         options={typeOptions}
                                         value={field.value}
-                                        onChange={(value) => handleTypeChange(value, field.onChange)}
+                                        onChange={(value) => handleTypeChange(value, index)}
                                         placeholder="Selecione ou crie um tipo"
                                         searchPlaceholder="Pesquisar ou criar..."
                                         emptyMessage="Nenhum tipo encontrado. Crie um novo."
@@ -300,6 +338,8 @@ export function NewExpenseForm() {
                                 </FormItem>
                             )}
                         />
+                    </div>
+                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                         <FormField
                             control={form.control}
                             name={`despesas.${index}.status`}

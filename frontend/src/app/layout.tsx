@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Poppins, PT_Sans } from "next/font/google";
 import "./globals.css";
-import { cn } from "../lib/utils";
+import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/toaster";
 
 const poppins = Poppins({
@@ -18,7 +18,7 @@ const ptSans = PT_Sans({
 
 
 export const metadata: Metadata = {
-  title: "Expense Tracker Dashboard",
+  title: "SISTEMA RADAR",
   description: "Gerencie suas despesas de forma eficiente.",
 };
 
