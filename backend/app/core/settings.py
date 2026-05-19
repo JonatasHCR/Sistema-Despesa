@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     DB_PORT: str
     DB_NAME: str
 
+    JWT_SECRET_KEY: str
+    JWT_ALGORITHM: str = "HS256"
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
+
     model_config = SettingsConfigDict(
         env_file=join(BASE_DIR, f".env"),
         env_file_encoding="utf-8",

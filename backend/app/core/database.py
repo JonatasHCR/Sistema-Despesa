@@ -9,7 +9,7 @@ DATABASE_URL = Settings().database_url()
 
 
 Base = declarative_base()
-engine = create_async_engine(DATABASE_URL, echo=True)
+engine = create_async_engine(DATABASE_URL, echo=False)
 
 session_factory = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
 SessionLocal = async_scoped_session(session_factory, scopefunc=asyncio.current_task)

@@ -23,7 +23,12 @@ class UserUpdateSchema(BaseModel):
 class UserOutputSchema(BaseModel):
     id: int = Field(..., gt=0)
     nome: str = Field(..., description="Nome do usuário")
-    senha: str = Field(..., min_length=3, description="Senha do usuário")
     email: EmailStr = Field(..., description="Email do usuário")
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class TokenSchema(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserOutputSchema

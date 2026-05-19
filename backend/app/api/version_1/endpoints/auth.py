@@ -1,11 +1,13 @@
 
-from fastapi import Depends, HTTPException, APIRouter, status
+from fastapi import Depends, HTTPException, APIRouter, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 
 from app.core.database import get_db
+from app.core.rate_limit import limiter
+from app.core.security import create_access_token, verify_password
 from app.service.user import UserService
-from app.schema.user import UserOutputSchema
+from app.schema.user import TokenSchema, UserOutputSchema
 
 
 class LoginSchema(BaseModel):
@@ -19,26 +21,30 @@ class AuthEndpoint:
         self.register_routes()
 
     def register_routes(self):
+        # slowapi exige um param `request: Request` na função para extrair o IP.
+        limited = limiter.limit("5/minute")(self.login)
         self.router.post(
-            "/login", response_model=UserOutputSchema, status_code=status.HTTP_200_OK
-        )(self.login)
+            "/login", response_model=TokenSchema, status_code=status.HTTP_200_OK
+        )(limited)
 
     async def login(
-        self, login_data: LoginSchema, db: AsyncSession = Depends(get_db)
-    ) -> UserOutputSchema:
+        self,
+        request: Request,
+        login_data: LoginSchema,
+        db: AsyncSession = Depends(get_db),
+    ) -> TokenSchema:
         service = UserService(db)
-        try:
-            user = await service.get_by_username(login_data.nome)
-        except ValueError:
+        user = await service.get_model_by_username(login_data.nome)
+
+        if user is None or not verify_password(login_data.senha, user.senha):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Usuário ou senha inválidos",
+                headers={"WWW-Authenticate": "Bearer"},
             )
 
-        if not user or user.senha != login_data.senha:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Usuário ou senha inválidos",
-            )
-
-        return user
+        token = create_access_token(subject=user.id)
+        return TokenSchema(
+            access_token=token,
+            user=UserOutputSchema.model_validate(user),
+        )
