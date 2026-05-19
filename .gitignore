@@ -304,6 +304,8 @@ backup/
 
 postrgress_data/
 postgres_data/
+postgres_data_prod/
+postgres_data_prod_backup_*.tar.gz
 
 .env
 
