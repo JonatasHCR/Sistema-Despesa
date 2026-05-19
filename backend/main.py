@@ -1,21 +1,16 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from app.api.version_1.endpoints.despesa import DespesaEndpoint
 from app.api.version_1.endpoints.user import UserEndpoint
 from app.api.version_1.endpoints.auth import AuthEndpoint
+from app.core.rate_limit import limiter
 
-from app.core.database import Base, engine
-
-async def create_tables():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    await create_tables()
-    yield  # app running
 
 app = FastAPI(
     title="Organizador de Finanças API",
@@ -27,12 +22,19 @@ app = FastAPI(
         {"name": "Despesa", "description": "Operações com Despesas"},
         {"name": "Auth", "description": "Operações de Autenticação"},
     ],
-    lifespan=lifespan
 )
+
+# Rate limiter (slowapi)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
+
+_allowed_origins_env = os.environ.get("CORS_ALLOWED_ORIGINS", "http://localhost:3000")
+_allowed_origins = [o.strip() for o in _allowed_origins_env.split(",") if o.strip()]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_allowed_origins,
     allow_methods=["*"],
     allow_headers=["*"],
     allow_credentials=True,

@@ -1,0 +1,13 @@
+# Dependências extras para testes e desenvolvimento.
+# Uso: pip install -r requirements-dev.txt
+
+-r requirements.txt
+
+aiosqlite==0.21.0
+asgi-lifespan==2.1.0
+coverage==7.8.0
+httpx==0.28.1
+pytest==8.3.5
+pytest-asyncio==1.0.0
+pytest-cov==6.1.1
+watchfiles==1.1.0

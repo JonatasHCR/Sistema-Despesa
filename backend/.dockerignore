@@ -40,3 +40,15 @@ __pypackages__/
 .env
 .env.*
 !.env.example
+
+# Git
+.git/
+.gitignore
+
+# Docs / testes
+*.md
+tests/
+
+# Dados que não pertencem à imagem
+postgres_data/
+backup.sql
