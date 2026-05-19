@@ -98,17 +98,17 @@ export function ExpenseCard({ expense, onUpdate }: ExpenseCardProps) {
       'border-l-status-due-soon': expense.dynamicStatus === 'due-soon',
       'border-l-status-overdue': expense.dynamicStatus === 'overdue',
     })}>
-      <CardHeader>
-        <div className="flex items-start justify-between gap-4">
-            <div className="flex flex-col gap-2">
-                <CardTitle className="font-headline text-lg font-semibold">{expense.nome}</CardTitle>
-                <div className="flex items-center gap-2">
+      <CardHeader className="p-4 sm:p-6">
+        <div className="flex items-start justify-between gap-2 sm:gap-4">
+            <div className="flex flex-col gap-2 min-w-0">
+                <CardTitle className="font-headline text-base sm:text-lg font-semibold break-words">{expense.nome}</CardTitle>
+                <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="secondary" className="w-fit">{expense.tipo}</Badge>
                   <Badge variant="outline" className={cn("w-fit", currentStatus.className)}>{currentStatus.label}</Badge>
                 </div>
             </div>
-            <div className="flex items-center gap-1">
-                <div className={cn("flex items-center gap-1.5 text-lg font-bold")}>
+            <div className="flex flex-col items-end gap-1 sm:flex-row sm:items-center shrink-0">
+                <div className={cn("flex items-center gap-1.5 text-base sm:text-lg font-bold whitespace-nowrap")}>
                     <span>
                         {expense.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </span>
@@ -155,31 +155,32 @@ export function ExpenseCard({ expense, onUpdate }: ExpenseCardProps) {
             </div>
         </div>
       </CardHeader>
-      <CardContent className="flex-grow pt-0">
+      <CardContent className="flex-grow pt-0 px-4 sm:px-6">
             <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2">
-                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                        <FileText className="h-4 w-4" />
-                        <span className="font-medium text-foreground">
+                    <div className="flex items-center space-x-2 text-xs sm:text-sm text-muted-foreground">
+                        <FileText className="h-4 w-4 shrink-0" />
+                        <span className="font-medium text-foreground truncate">
                             {expense.descricao || "PARCELA ÚNICA"}
                         </span>
                     </div>
-                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                        <CalendarDays className="h-4 w-4" />
-                        <span>
-                            Vencimento: {format(dueDate, "dd 'de' MMMM, yyyy", { locale: ptBR })}
+                    <div className="flex items-center space-x-2 text-xs sm:text-sm text-muted-foreground">
+                        <CalendarDays className="h-4 w-4 shrink-0" />
+                        <span className="truncate">
+                            <span className="hidden sm:inline">Vencimento: </span>
+                            {format(dueDate, "dd 'de' MMM, yyyy", { locale: ptBR })}
                         </span>
                     </div>
-                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                        <User className="h-4 w-4" />
-                        <span>
-                            Criado por: {expense.userName || `Usuário ${expense.user_id}`}
+                    <div className="flex items-center space-x-2 text-xs sm:text-sm text-muted-foreground">
+                        <User className="h-4 w-4 shrink-0" />
+                        <span className="truncate">
+                            {expense.userName || `Usuário ${expense.user_id}`}
                         </span>
                     </div>
                 </div>
             </div>
       </CardContent>
-       <CardFooter className="pt-4">
+       <CardFooter className="pt-4 p-4 sm:p-6">
         <AlertDialog open={isStatusAlertOpen} onOpenChange={setIsStatusAlertOpen}>
             <AlertDialogTrigger asChild>
                  <Button 

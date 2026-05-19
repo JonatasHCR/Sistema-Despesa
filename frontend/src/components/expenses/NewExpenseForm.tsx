@@ -24,7 +24,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format, formatISO, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { addExpense, getExpenses } from '@/lib/api';
+import { addExpense, getExpenses, getStoredUser } from '@/lib/api';
 import { type User, type Expense } from '@/lib/types';
 import { Combobox } from '@/components/ui/combobox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -69,9 +69,8 @@ export function NewExpenseForm() {
   const [expenseNames, setExpenseNames] = useState<string[]>([]);
   
   useEffect(() => {
-    const session = localStorage.getItem('userSession');
-    if (session) {
-      const userData: User = JSON.parse(session);
+    const userData = getStoredUser();
+    if (userData) {
       setUser(userData);
     } else {
         router.replace('/login');
@@ -223,7 +222,7 @@ export function NewExpenseForm() {
     <Card>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-0">
-          <CardContent className="space-y-6 pt-6">
+          <CardContent className="space-y-6 p-4 sm:p-6">
             <FormField
               control={form.control}
               name="nome"
@@ -380,11 +379,11 @@ export function NewExpenseForm() {
               Adicionar outra despesa
             </Button>
           </CardContent>
-          <CardFooter className="flex justify-end gap-4">
-            <Button type="button" variant="outline" onClick={() => router.back()}>
+          <CardFooter className="flex flex-col sm:flex-row sm:justify-end gap-2 sm:gap-4 p-4 sm:p-6">
+            <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => router.back()}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSubmitting || !user}>
+            <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting || !user}>
               {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
               Cadastrar Despesas
             </Button>

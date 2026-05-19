@@ -20,7 +20,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader, Eye, EyeOff } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { signIn } from '@/lib/api';
+import { signIn, storeSession } from '@/lib/api';
 import Link from 'next/link';
 
 const loginFormSchema = z.object({
@@ -42,8 +42,8 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    const session = localStorage.getItem('userSession');
-    if (session) {
+    const token = localStorage.getItem('authToken');
+    if (token) {
       router.replace('/');
     } else {
       setIsVerifying(false);
@@ -61,18 +61,13 @@ export default function LoginPage() {
   async function onSubmit(data: LoginFormValues) {
     setIsSubmitting(true);
     try {
-      const user = await signIn(data);
-
-      if (user) {
-        localStorage.setItem('userSession', JSON.stringify(user));
-        toast({
-          title: 'Login bem-sucedido!',
-          description: `Bem-vindo de volta, ${user.nome}.`,
-        });
-        router.push('/');
-      } else {
-        throw new Error('Usuário ou senha inválidos.');
-      }
+      const { access_token, user } = await signIn(data);
+      storeSession(access_token, user);
+      toast({
+        title: 'Login bem-sucedido!',
+        description: `Bem-vindo de volta, ${user.nome}.`,
+      });
+      router.push('/');
     } catch (error) {
       toast({
         variant: 'destructive',

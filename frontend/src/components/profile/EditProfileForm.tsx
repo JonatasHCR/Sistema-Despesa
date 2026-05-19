@@ -20,7 +20,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Loader, Eye, EyeOff } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { type User } from '@/lib/types';
-import { updateUser, signIn } from '@/lib/api';
+import { updateUser, signIn, getStoredUser, storeSession } from '@/lib/api';
 
 const profileFormSchema = z.object({
   nome: z.string().min(2, {
@@ -54,9 +54,8 @@ export function EditProfileForm() {
   });
   
   useEffect(() => {
-    const session = localStorage.getItem('userSession');
-    if (session) {
-      const userData: User = JSON.parse(session);
+    const userData = getStoredUser();
+    if (userData) {
       setUser(userData);
       form.reset({
         nome: userData.nome,
@@ -75,7 +74,7 @@ export function EditProfileForm() {
     setIsSubmitting(true);
     
     try {
-      // If user wants to change password, first verify the current one
+      // Se o usuário quer trocar de senha, valida a atual reautenticando.
       if (data.novaSenha) {
         if (!data.senhaAtual) {
             toast({
@@ -88,7 +87,8 @@ export function EditProfileForm() {
         }
 
         try {
-            await signIn({ nome: user.nome, senha: data.senhaAtual });
+            const { access_token, user: refreshedUser } = await signIn({ nome: user.nome, senha: data.senhaAtual });
+            storeSession(access_token, refreshedUser);
         } catch (error) {
             toast({
                 variant: 'destructive',
@@ -99,7 +99,7 @@ export function EditProfileForm() {
             return;
         }
       }
-      
+
       const updateData: Partial<User> & { senha?: string } = {
         nome: data.nome,
         email: data.email,
@@ -108,13 +108,9 @@ export function EditProfileForm() {
       if (data.novaSenha) {
         updateData.senha = data.novaSenha;
       }
-      
-      const updatedUser = await updateUser(user.id, updateData);
 
-      // Update user session with new details
-      const newSessionData = { ...user, ...updatedUser };
-      localStorage.setItem('userSession', JSON.stringify(newSessionData));
-      setUser(newSessionData);
+      const updatedUser = await updateUser(user.id, updateData);
+      setUser({ ...user, ...updatedUser });
 
       toast({
         title: 'Sucesso!',
@@ -248,11 +244,11 @@ export function EditProfileForm() {
               )}
             />
           </CardContent>
-          <CardFooter className="flex justify-between">
-            <Button type="button" variant="outline" onClick={() => router.back()}>
+          <CardFooter className="flex flex-col-reverse sm:flex-row sm:justify-between gap-2 p-4 sm:p-6">
+            <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => router.back()}>
               Voltar
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
               {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
               Salvar Alterações
             </Button>

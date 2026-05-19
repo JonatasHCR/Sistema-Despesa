@@ -12,31 +12,44 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { format, parseISO, startOfDay, endOfDay, isPast, isToday, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CalendarIcon, Printer, Loader, Search, X, RefreshCw } from 'lucide-react';
-import { getExpenses } from '@/lib/api';
+import { getExpenses, getStoredUser } from '@/lib/api';
 import { type Expense, type DynamicExpenseStatus, type User } from '@/lib/types';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
+interface ReportSnapshot {
+  expenses: Expense[];
+  generatedAt: Date;
+  filters: {
+    startDate?: Date;
+    endDate?: Date;
+    selectedType: string;
+    dueSoonDays: number;
+  };
+}
+
 export function ReportGenerator() {
+  const { toast } = useToast();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  
+
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
   const [minAmount, setMinAmount] = useState<string>('');
   const [maxAmount, setMaxAmount] = useState<string>('');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedNames, setSelectedNames] = useState<string[]>([]);
-  
+  const [nameSearch, setNameSearch] = useState('');
+
   const [includeOverdue, setIncludeOverdue] = useState(true);
   const [includeDueSoon, setIncludeDueSoon] = useState(true);
   const [includeDue, setIncludeDue] = useState(false);
-  
+
   const [dueSoonDays, setDueSoonDays] = useState(6);
-  const [reportData, setReportData] = useState<Expense[] | null>(null);
+  const [report, setReport] = useState<ReportSnapshot | null>(null);
 
   const fetchExpenses = useCallback(async () => {
     setIsLoading(true);
@@ -52,10 +65,7 @@ export function ReportGenerator() {
 
   useEffect(() => {
     fetchExpenses();
-    const session = localStorage.getItem('userSession');
-    if (session) {
-      setCurrentUser(JSON.parse(session));
-    }
+    setCurrentUser(getStoredUser());
   }, [fetchExpenses]);
 
   const types = useMemo(() => {
@@ -67,6 +77,12 @@ export function ReportGenerator() {
     const names = new Set(expenses.map(e => e.nome));
     return Array.from(names).sort();
   }, [expenses]);
+
+  const filteredNameOptions = useMemo(() => {
+    if (!nameSearch.trim()) return uniqueNames;
+    const needle = nameSearch.toLowerCase();
+    return uniqueNames.filter(n => n.toLowerCase().includes(needle));
+  }, [uniqueNames, nameSearch]);
 
   const handleToggleName = (name: string) => {
     setSelectedNames(prev => 
@@ -98,38 +114,52 @@ export function ReportGenerator() {
   };
 
   const handleGenerateReport = () => {
-    setIsGenerating(true);
-    
+    const min = parseFloat(minAmount.replace(/\./g, '').replace(',', '.'));
+    const max = parseFloat(maxAmount.replace(/\./g, '').replace(',', '.'));
+    const startBoundary = startDate ? startOfDay(startDate) : null;
+    const endBoundary = endDate ? endOfDay(endDate) : null;
+
     const filtered = expenses.filter(expense => {
       if (expense.status === 'Q') return false;
 
       const info = getStatusInfo(expense);
-      
+
       if (!includeOverdue && info.status === 'overdue') return false;
       if (!includeDueSoon && info.status === 'due-soon') return false;
       if (!includeDue && info.status === 'due') return false;
 
       const expenseDate = parseISO(expense.vencimento);
-      if (startDate && expenseDate < startOfDay(startDate)) return false;
-      if (endDate && expenseDate > endOfDay(endDate)) return false;
-      
-      const expenseAmount = expense.valor;
-      const min = parseFloat(minAmount.replace(/\./g, '').replace(',', '.'));
-      const max = parseFloat(maxAmount.replace(/\./g, '').replace(',', '.'));
-      if (!isNaN(min) && expenseAmount < min) return false;
-      if (!isNaN(max) && expenseAmount > max) return false;
-      
+      if (startBoundary && expenseDate < startBoundary) return false;
+      if (endBoundary && expenseDate > endBoundary) return false;
+
+      if (!isNaN(min) && expense.valor < min) return false;
+      if (!isNaN(max) && expense.valor > max) return false;
+
       if (selectedType !== 'all' && expense.tipo !== selectedType) return false;
       if (selectedNames.length > 0 && !selectedNames.includes(expense.nome)) return false;
-      
+
       return true;
     });
 
-    setReportData(filtered.sort((a, b) => {
+    if (filtered.length === 0) {
+      toast({
+        title: 'Nenhuma despesa encontrada',
+        description: 'Ajuste os filtros e tente novamente.',
+      });
+      setReport(null);
+      return;
+    }
+
+    const sorted = filtered.sort((a, b) => {
       if (a.tipo !== b.tipo) return a.tipo.localeCompare(b.tipo);
       return parseISO(a.vencimento).getTime() - parseISO(b.vencimento).getTime();
-    }));
-    setIsGenerating(false);
+    });
+
+    setReport({
+      expenses: sorted,
+      generatedAt: new Date(),
+      filters: { startDate, endDate, selectedType, dueSoonDays },
+    });
   };
 
   const clearFilters = () => {
@@ -142,7 +172,7 @@ export function ReportGenerator() {
     setIncludeOverdue(true);
     setIncludeDueSoon(true);
     setIncludeDue(false);
-    setReportData(null);
+    setReport(null);
   };
 
   const handlePrint = () => {
@@ -150,18 +180,18 @@ export function ReportGenerator() {
   };
 
   const totalAmount = useMemo(() => {
-    if (!reportData) return 0;
-    return reportData.reduce((sum, e) => sum + Number(e.valor), 0);
-  }, [reportData]);
+    if (!report) return 0;
+    return report.expenses.reduce((sum, e) => sum + Number(e.valor), 0);
+  }, [report]);
 
   const groupedData = useMemo(() => {
-    if (!reportData) return {};
-    return reportData.reduce((acc, expense) => {
+    if (!report) return {};
+    return report.expenses.reduce((acc, expense) => {
       if (!acc[expense.tipo]) acc[expense.tipo] = [];
       acc[expense.tipo].push(expense);
       return acc;
     }, {} as Record<string, Expense[]>);
-  }, [reportData]);
+  }, [report]);
 
   if (isLoading) {
     return (
@@ -192,9 +222,20 @@ export function ReportGenerator() {
                   <Checkbox id="filter-overdue" checked={includeOverdue} onCheckedChange={(val) => setIncludeOverdue(!!val)} />
                   <Label htmlFor="filter-overdue" className="text-xs font-bold text-red-600">Vencidas</Label>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Checkbox id="filter-due-soon" checked={includeDueSoon} onCheckedChange={(val) => setIncludeDueSoon(!!val)} />
-                  <Label htmlFor="filter-due-soon" className="text-xs font-bold text-yellow-600">A Vencer</Label>
+                  <Label htmlFor="filter-due-soon" className="text-xs font-bold text-yellow-600">A Vencer em até</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    className="h-7 w-14"
+                    value={dueSoonDays}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value, 10);
+                      setDueSoonDays(isNaN(v) || v < 0 ? 0 : v);
+                    }}
+                  />
+                  <span className="text-xs text-muted-foreground">dias</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox id="filter-due" checked={includeDue} onCheckedChange={(val) => setIncludeDue(!!val)} />
@@ -256,52 +297,68 @@ export function ReportGenerator() {
           </div>
 
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <Label className="text-base font-semibold">Selecionar Contas Específicas</Label>
                 <Button variant="ghost" size="sm" onClick={handleSelectAllNames}>
                     {selectedNames.length === uniqueNames.length && uniqueNames.length > 0 ? "Desmarcar Todas" : "Selecionar Todas"}
                 </Button>
             </div>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Pesquisar conta..."
+                value={nameSearch}
+                onChange={(e) => setNameSearch(e.target.value)}
+                className="pl-10"
+              />
+            </div>
             <Card className="bg-muted/30">
                 <ScrollArea className="h-48 p-4">
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                        {uniqueNames.map((name) => (
-                            <div key={name} className="flex items-center space-x-2">
-                                <Checkbox 
-                                    id={`name-${name}`} 
-                                    checked={selectedNames.includes(name)} 
-                                    onCheckedChange={() => handleToggleName(name)} 
-                                />
-                                <Label 
-                                    htmlFor={`name-${name}`} 
-                                    className="cursor-pointer text-[11px] font-normal truncate"
-                                    title={name}
-                                >
-                                    {name}
-                                </Label>
-                            </div>
-                        ))}
-                    </div>
+                    {filteredNameOptions.length === 0 ? (
+                        <p className="text-center text-xs text-muted-foreground py-8">
+                            Nenhuma conta corresponde à busca.
+                        </p>
+                    ) : (
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                            {filteredNameOptions.map((name) => (
+                                <div key={name} className="flex items-center space-x-2">
+                                    <Checkbox
+                                        id={`name-${name}`}
+                                        checked={selectedNames.includes(name)}
+                                        onCheckedChange={() => handleToggleName(name)}
+                                    />
+                                    <Label
+                                        htmlFor={`name-${name}`}
+                                        className="cursor-pointer text-xs font-normal truncate"
+                                        title={name}
+                                    >
+                                        {name}
+                                    </Label>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </ScrollArea>
             </Card>
           </div>
 
-          <div className="flex justify-end gap-2 pt-4">
+          <div className="flex flex-col gap-2 pt-4 sm:flex-row sm:justify-end">
             <Button variant="ghost" onClick={clearFilters}>
               <X className="mr-2 h-4 w-4" /> Limpar Filtros
             </Button>
-            <Button onClick={handleGenerateReport} disabled={isGenerating}>
-              {isGenerating ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
+            <Button onClick={handleGenerateReport}>
+              <Search className="mr-2 h-4 w-4" />
               Gerar Relatório
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      {reportData && (
+      {report && (
         <div className="space-y-6">
-          <div className="flex items-center justify-between print:hidden">
-            <h2 className="text-xl font-semibold">Resultado do Relatório ({reportData.length})</h2>
+          <div className="flex flex-col gap-2 print:hidden sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-xl font-semibold">Resultado do Relatório ({report.expenses.length})</h2>
             <Button variant="outline" onClick={handlePrint}>
               <Printer className="mr-2 h-4 w-4" /> Imprimir Relatório
             </Button>
@@ -310,27 +367,27 @@ export function ReportGenerator() {
           <Card className="print:border-none print:shadow-none">
             <CardHeader className="relative pb-2">
               <div className="flex flex-col items-center justify-center pt-8">
-                <CardTitle className="text-2xl font-headline text-center">Relatório de Despesas Pendentes</CardTitle>
+                <CardTitle className="text-xl sm:text-2xl font-headline text-center">Relatório de Despesas Pendentes</CardTitle>
                 <CardDescription className="text-xs text-center mt-1">
-                    Emitido em {format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                    Emitido em {format(report.generatedAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                     {currentUser && ` por ${currentUser.nome}`}
                     <div className="mt-1 print:block">
-                    {startDate && `Início: ${format(startDate, 'dd/MM/yy')} | `}
-                    {endDate && `Fim: ${format(endDate, 'dd/MM/yy')} | `}
-                    {selectedType !== 'all' && `Grupo: ${selectedType} | `}
+                    {report.filters.startDate && `Início: ${format(report.filters.startDate, 'dd/MM/yy')} | `}
+                    {report.filters.endDate && `Fim: ${format(report.filters.endDate, 'dd/MM/yy')} | `}
+                    {report.filters.selectedType !== 'all' && `Grupo: ${report.filters.selectedType} | `}
                     </div>
                 </CardDescription>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-2 sm:px-6">
               <div className="mb-6 grid grid-cols-2 gap-4 rounded-lg border bg-muted/30 p-4 print:bg-gray-50">
                 <div className="flex flex-col">
                   <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Quantidade</span>
-                  <span className="text-lg font-bold">{reportData.length} Itens Pendentes</span>
+                  <span className="text-base sm:text-lg font-bold">{report.expenses.length} Itens Pendentes</span>
                 </div>
                 <div className="flex flex-col text-right">
                   <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Total em Aberto</span>
-                  <span className="text-lg font-bold text-destructive">
+                  <span className="text-base sm:text-lg font-bold text-destructive">
                     {totalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                   </span>
                 </div>
@@ -340,57 +397,59 @@ export function ReportGenerator() {
                 {Object.entries(groupedData).map(([tipo, items]) => (
                   <div key={tipo} className="space-y-2">
                     <div className="flex items-center justify-between border-b border-primary/30 pb-1">
-                      <h3 className="text-[10px] font-bold uppercase tracking-tight text-primary">{tipo}</h3>
+                      <h3 className="text-xs print:text-[10px] font-bold uppercase tracking-tight text-primary">{tipo}</h3>
                     </div>
-                    <Table>
-                      <TableHeader className="bg-muted/20">
-                        <TableRow className="h-8">
-                          <TableHead className="text-[10px] h-8 w-[90px]">Vencimento</TableHead>
-                          <TableHead className="text-[10px] h-8">Nome</TableHead>
-                          <TableHead className="text-[10px] h-8 w-[100px]">Info</TableHead>
-                          <TableHead className="text-[10px] h-8 w-[100px]">Situação</TableHead>
-                          <TableHead className="text-[10px] h-8 text-right w-[100px]">Valor</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {items.map((expense) => {
-                          const info = getStatusInfo(expense);
-                          return (
-                            <TableRow key={expense.id} className="h-8 border-b border-muted/30">
-                              <TableCell className="text-[10px] py-1">
-                                {format(parseISO(expense.vencimento), 'dd/MM/yyyy')}
-                              </TableCell>
-                              <TableCell className="text-[10px] py-1 font-medium">
-                                {expense.nome}
-                              </TableCell>
-                              <TableCell className="text-[10px] py-1 text-muted-foreground">
-                                {expense.descricao || "PARCELA ÚNICA"}
-                              </TableCell>
-                              <TableCell className="text-[10px] py-1">
-                                <span className={cn(
-                                  "px-1.5 py-0.5 rounded-sm font-bold border",
-                                  info.colorClass
-                                )}>
-                                  {info.label}
-                                </span>
-                              </TableCell>
-                              <TableCell className="text-[10px] py-1 text-right font-bold">
-                                {Number(expense.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader className="bg-muted/20">
+                          <TableRow className="h-8">
+                            <TableHead className="text-xs print:text-[10px] h-8 w-[90px]">Vencimento</TableHead>
+                            <TableHead className="text-xs print:text-[10px] h-8">Nome</TableHead>
+                            <TableHead className="text-xs print:text-[10px] h-8 w-[100px]">Info</TableHead>
+                            <TableHead className="text-xs print:text-[10px] h-8 w-[100px]">Situação</TableHead>
+                            <TableHead className="text-xs print:text-[10px] h-8 text-right w-[100px]">Valor</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {items.map((expense) => {
+                            const info = getStatusInfo(expense);
+                            return (
+                              <TableRow key={expense.id} className="h-8 border-b border-muted/30">
+                                <TableCell className="text-xs print:text-[10px] py-1">
+                                  {format(parseISO(expense.vencimento), 'dd/MM/yyyy')}
+                                </TableCell>
+                                <TableCell className="text-xs print:text-[10px] py-1 font-medium">
+                                  {expense.nome}
+                                </TableCell>
+                                <TableCell className="text-xs print:text-[10px] py-1 text-muted-foreground">
+                                  {expense.descricao || "PARCELA ÚNICA"}
+                                </TableCell>
+                                <TableCell className="text-xs print:text-[10px] py-1">
+                                  <span className={cn(
+                                    "px-1.5 py-0.5 rounded-sm font-bold border whitespace-nowrap",
+                                    info.colorClass
+                                  )}>
+                                    {info.label}
+                                  </span>
+                                </TableCell>
+                                <TableCell className="text-xs print:text-[10px] py-1 text-right font-bold whitespace-nowrap">
+                                  {Number(expense.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
                     <div className="flex justify-end pt-1">
-                      <span className="text-[10px] font-bold">
+                      <span className="text-xs print:text-[10px] font-bold">
                         Subtotal {tipo}: {items.reduce((sum, i) => sum + Number(i.valor), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </span>
                     </div>
                   </div>
                 ))}
               </div>
-              
+
               <div className="mt-12 hidden border-t pt-2 text-center text-[9px] text-muted-foreground print:block">
                 Controle interno de pagamentos - UFC Engenharia.
               </div>

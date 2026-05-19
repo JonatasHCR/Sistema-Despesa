@@ -27,3 +27,12 @@ pnpm-debug.log*
 # caches
 .cache/
 .next/cache/
+
+# git e docs
+.git/
+.gitignore
+*.md
+
+# editor
+.vscode/
+.idea/

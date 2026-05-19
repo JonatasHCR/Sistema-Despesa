@@ -140,7 +140,7 @@ export function EditExpenseForm({ expense }: { expense: Expense }) {
     <Card>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-0">
-          <CardContent className="space-y-6 pt-6">
+          <CardContent className="space-y-6 p-4 sm:p-6">
             <FormField
               control={form.control}
               name="nome"
@@ -287,11 +287,11 @@ export function EditExpenseForm({ expense }: { expense: Expense }) {
                 />
             </div>
           </CardContent>
-          <CardFooter className="flex justify-end gap-4">
-            <Button type="button" variant="outline" onClick={() => router.back()}>
+          <CardFooter className="flex flex-col sm:flex-row sm:justify-end gap-2 sm:gap-4 p-4 sm:p-6">
+            <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => router.back()}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
               {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
               Salvar Alterações
             </Button>

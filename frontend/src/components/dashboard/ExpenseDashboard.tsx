@@ -27,7 +27,7 @@ type SortDirection = 'asc' | 'desc';
 function DashboardSkeleton() {
     return (
         <div className="flex flex-col gap-8">
-             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+             <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
                 <CardSkeleton />
                 <CardSkeleton />
                 <CardSkeleton />
@@ -328,8 +328,17 @@ export function ExpenseDashboard() {
 
   return (
     <div className="flex flex-col gap-8">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <StatusCard 
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+            <StatusCard
+                title="Vencidas"
+                icon={<AlertTriangle className="h-5 w-5" />}
+                count={statusCounts.overdue}
+                total={statusTotals.overdue}
+                status="overdue"
+                isSelected={selectedStatus === 'overdue'}
+                onClick={() => handleStatusCardClick('overdue')}
+            />
+            <StatusCard
                 title="Vencendo"
                 icon={<Hourglass className="h-5 w-5" />}
                 count={statusCounts['due-soon']}
@@ -340,7 +349,7 @@ export function ExpenseDashboard() {
                 dueSoonDays={dueSoonDays}
                 setDueSoonDays={setDueSoonDays}
             />
-            <StatusCard 
+            <StatusCard
                 title="A vencer"
                 icon={<Receipt className="h-5 w-5" />}
                 count={statusCounts.due}
@@ -349,17 +358,8 @@ export function ExpenseDashboard() {
                 isSelected={selectedStatus === 'due'}
                 onClick={() => handleStatusCardClick('due')}
             />
-            <StatusCard 
-                title="Vencidos"
-                icon={<AlertTriangle className="h-5 w-5" />}
-                count={statusCounts.overdue}
-                total={statusTotals.overdue}
-                status="overdue"
-                isSelected={selectedStatus === 'overdue'}
-                onClick={() => handleStatusCardClick('overdue')}
-            />
-            <StatusCard 
-                title="Pagos"
+            <StatusCard
+                title="Pagas"
                 icon={<CheckCircle2 className="h-5 w-5" />}
                 count={statusCounts.paid}
                 total={statusTotals.paid}
@@ -374,19 +374,18 @@ export function ExpenseDashboard() {
             <Loader className="h-8 w-8 animate-spin text-primary" />
           </div>
         )}
-        <div className="flex flex-col space-y-4 p-6">
+        <div className="flex flex-col space-y-4 p-4 sm:p-6">
             <div>
-                 <h3 className="font-headline text-2xl font-semibold leading-none tracking-tight w-full sm:w-auto">
+                 <h3 className="font-headline text-xl sm:text-2xl font-semibold leading-none tracking-tight">
                     {selectedStatus === 'paid' ? 'Despesas Pagas' : 'Minhas Despesas'}
                 </h3>
             </div>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-               
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto flex-wrap">
+            <div className="flex flex-col gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div className="flex items-center gap-2">
-                         <Label className="text-muted-foreground whitespace-nowrap">Ordenar por:</Label>
+                         <Label className="text-muted-foreground whitespace-nowrap text-xs sm:text-sm">Ordenar:</Label>
                         <Select value={sortField} onValueChange={(value) => setSortField(value as SortField)}>
-                            <SelectTrigger className="w-full sm:w-40">
+                            <SelectTrigger className="flex-1">
                                 <SelectValue placeholder="Ordenar por..." />
                             </SelectTrigger>
                             <SelectContent>
@@ -401,9 +400,9 @@ export function ExpenseDashboard() {
                         </Button>
                     </div>
                      <div className="flex items-center gap-2">
-                        <Filter className="h-4 w-4 text-muted-foreground" />
+                        <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
                         <Select value={filterField} onValueChange={(value) => setFilterField(value as FilterField)}>
-                            <SelectTrigger className="w-full sm:w-48">
+                            <SelectTrigger className="flex-1">
                                 <SelectValue placeholder="Filtrar por..." />
                             </SelectTrigger>
                             <SelectContent>
@@ -415,16 +414,16 @@ export function ExpenseDashboard() {
                             </SelectContent>
                         </Select>
                     </div>
-                    {renderFilterInput()}
                 </div>
+                <div className="w-full">{renderFilterInput()}</div>
             </div>
-             <div className="flex items-center justify-end gap-2 text-lg font-semibold text-muted-foreground">
+             <div className="flex items-center justify-end gap-2 text-base sm:text-lg font-semibold text-muted-foreground">
                 <span>
                     {totalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </span>
             </div>
         </div>
-        <div className="p-6 pt-0">
+        <div className="p-4 sm:p-6 pt-0">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentPage + itemsPerPage + filterField + String(filterValue) + selectedStatus + sortField + sortDirection}
@@ -464,21 +463,21 @@ export function ExpenseDashboard() {
           </AnimatePresence>
         </div>
         {sortedAndFilteredExpenses.length > 0 && (
-          <div className="flex items-center justify-between border-t p-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t p-3 sm:p-4">
             <div className="flex items-center gap-2">
-              <Label htmlFor="items-per-page" className="text-sm text-muted-foreground">Itens por página:</Label>
+              <Label htmlFor="items-per-page" className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">Itens / página:</Label>
               <Input
                 id="items-per-page"
                 type="number"
                 value={itemsPerPage}
                 onChange={(e) => setItemsPerPage(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                className="h-8 w-20"
+                className="h-8 w-16"
                 min="1"
               />
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">
-                Página {currentPage} de {totalPages}
+            <div className="flex items-center justify-end gap-2">
+              <span className="text-xs sm:text-sm text-muted-foreground">
+                Pág. {currentPage} de {totalPages}
               </span>
               <Button
                 variant="outline"

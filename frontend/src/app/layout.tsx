@@ -22,6 +22,25 @@ export const metadata: Metadata = {
   description: "Gerencie suas despesas de forma eficiente.",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+};
+
+// Aplica a classe `.dark` no <html> ANTES da hidratação — evita flash do tema claro
+// quando o usuário já escolheu escuro (ou o sistema prefere escuro).
+const themeInitScript = `
+(function() {
+  try {
+    var stored = localStorage.getItem('theme');
+    var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var isDark = stored === 'dark' || (stored !== 'light' && prefersDark);
+    if (isDark) document.documentElement.classList.add('dark');
+  } catch (e) {}
+})();
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -29,6 +48,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body
         className={cn(
           "min-h-screen bg-background font-body antialiased",
@@ -36,7 +58,7 @@ export default function RootLayout({
           ptSans.variable
         )}
       >
-        <main className="container mx-auto p-4 sm:p-6 md:p-8">
+        <main className="container mx-auto px-3 py-4 sm:p-6 md:p-8">
           {children}
         </main>
         <Toaster />

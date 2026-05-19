@@ -11,12 +11,12 @@ export default function PageWrapper({ children }: { children: React.ReactNode })
   const [isVerifying, setIsVerifying] = useState(true);
 
   useEffect(() => {
-    const session = localStorage.getItem('userSession');
+    const token = localStorage.getItem('authToken');
     const isAuthPage = pathname === '/login';
 
-    if (!session && !isAuthPage) {
+    if (!token && !isAuthPage) {
       router.replace('/login');
-    } else if (session && isAuthPage) {
+    } else if (token && isAuthPage) {
       router.replace('/');
     }
     else {
