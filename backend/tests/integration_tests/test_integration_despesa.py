@@ -1,56 +1,66 @@
 import pytest
 
 
+URL_DESPESA = "/despesas/"
+
+
 despesa_teste = {
     "nome": "usuario teste",
     "tipo": "B",
+    "status": "P",
     "valor": 10.50,
     "vencimento": "2024-12-31",
-    "user_id": 1,
 }
-user_teste = {
-    "nome": "usuario teste",
-    "email": "teste@gmail.com",
-    "senha": "senha123criptografada",
-}
-
-URL_DESPESA = "/despesas/"
-URL_USER = "/users/"
 
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_integration_create_update_get_delete_despesa(async_client):
+async def test_integration_create_update_get_delete_despesa(async_client, auth):
+    headers = auth["headers"]
 
-    response_create_user = await async_client.post(URL_USER, json=user_teste)
-    print(response_create_user.status_code)
-    print(response_create_user.text)
-    assert response_create_user.status_code == 201
-    assert response_create_user.json()["nome"] == user_teste["nome"]
-    user_id = response_create_user.json()["id"]
-    despesa_teste["user_id"] = user_id
+    response_create = await async_client.post(URL_DESPESA, json=despesa_teste, headers=headers)
+    assert response_create.status_code == 201, response_create.text
+    body = response_create.json()
+    assert body["nome"] == despesa_teste["nome"]
+    assert body["user_id"] == auth["user"]["id"]
+    despesa_id = body["id"]
 
-    response_create_despesa = await async_client.post(URL_DESPESA, json=despesa_teste)
-    assert response_create_despesa.status_code == 201
-    assert response_create_despesa.json()["nome"] == despesa_teste["nome"]
-    despesa_id = response_create_despesa.json()["id"]
-
-    despesa_teste["nome"] = "Nome Teste Alterado"
-    response_update_despesa = await async_client.put(
-        f"{URL_DESPESA}{despesa_id}", json=despesa_teste
+    response_update = await async_client.put(
+        f"{URL_DESPESA}{despesa_id}",
+        json={**despesa_teste, "nome": "Nome Alterado"},
+        headers=headers,
     )
-    assert response_update_despesa.status_code == 200
-    assert response_update_despesa.json()["nome"] == despesa_teste["nome"]
+    assert response_update.status_code == 200
+    assert response_update.json()["nome"] == "Nome Alterado"
 
-    response_get_despesa = await async_client.get(f"{URL_DESPESA}{despesa_id}")
-    assert response_get_despesa.status_code == 200
-    assert response_get_despesa.json()["nome"] == despesa_teste["nome"]
+    response_get = await async_client.get(f"{URL_DESPESA}{despesa_id}", headers=headers)
+    assert response_get.status_code == 200
 
-    response_get_by_user = await async_client.get(f"{URL_DESPESA}user/{user_id}")
+    response_get_by_user = await async_client.get(
+        f"{URL_DESPESA}user/{auth['user']['id']}", headers=headers
+    )
     assert response_get_by_user.status_code == 200
 
-    response_delete_ativo = await async_client.delete(f"{URL_DESPESA}{despesa_id}")
-    assert response_delete_ativo.status_code == 204
+    response_delete = await async_client.delete(f"{URL_DESPESA}{despesa_id}", headers=headers)
+    assert response_delete.status_code == 204
 
-    response_delete_user = await async_client.delete(f"{URL_USER}{user_id}")
-    assert response_delete_user.status_code == 204
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_integration_cannot_edit_other_users_despesa(async_client, auth):
+    # User A cria uma despesa
+    create_response = await async_client.post(URL_DESPESA, json=despesa_teste, headers=auth["headers"])
+    despesa_id = create_response.json()["id"]
+
+    # User B é criado e loga
+    await async_client.post("/users/", json={"nome": "outro", "email": "outro@e.com", "senha": "outra1"})
+    login = await async_client.post("/auth/login", json={"nome": "outro", "senha": "outra1"})
+    other_headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+    # User B tenta editar a despesa do A
+    response = await async_client.put(
+        f"{URL_DESPESA}{despesa_id}",
+        json={**despesa_teste, "nome": "invasão"},
+        headers=other_headers,
+    )
+    assert response.status_code == 403

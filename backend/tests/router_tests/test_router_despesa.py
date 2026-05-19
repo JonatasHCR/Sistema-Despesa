@@ -1,21 +1,20 @@
 import pytest
 
 
-despesa_teste = {
-    "nome": "usuario teste",
-    "tipo": "B",
-    "valor": 10.50,
-    "vencimento": "2024-12-31",
-    "user_id": 1,
-}
-
 URL_DESPESA = "/despesas/"
 
 
 @pytest.mark.asyncio
 @pytest.mark.routers
-async def test_get_despesas_by_user_id(async_client):
+async def test_get_despesas_by_user_id_requires_auth(async_client):
+    response = await async_client.get(f"{URL_DESPESA}user/1")
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+@pytest.mark.routers
+async def test_get_despesas_by_user_id(async_client, auth):
     response = await async_client.get(
-        f"{URL_DESPESA}user/{despesa_teste['user_id']}"
+        f"{URL_DESPESA}user/{auth['user']['id']}", headers=auth["headers"]
     )
     assert response.status_code == 200
