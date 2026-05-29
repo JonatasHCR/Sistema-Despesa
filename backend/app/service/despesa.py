@@ -12,7 +12,7 @@ from .base import BaseService
 
 
 class DespesaService(
-    BaseService[DespesaRepository, DespesaSchema, DespesaSchema, DespesaOutputSchema]
+    BaseService[DespesaRepository, DespesaSchema, DespesaUpdateSchema, DespesaOutputSchema]
 ):
     def __init__(self, db: AsyncSession):
         super().__init__(DespesaRepository, DespesaOutputSchema, db)

@@ -3,6 +3,8 @@ from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
 
+from app.core.enums import DespesaStatusEnum
+
 
 class DespesaBase(BaseModel):
     nome: str = Field(..., description="Nome da despesa")

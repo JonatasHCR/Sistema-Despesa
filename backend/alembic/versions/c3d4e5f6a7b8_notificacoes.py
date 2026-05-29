@@ -18,52 +18,35 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.create_table(
-        "tb_notificacao_config",
-        sa.Column("user_id", sa.Integer(), nullable=False),
-        sa.Column("ativo", sa.Boolean(), nullable=False, server_default=sa.true()),
-        sa.Column(
-            "dias_antecedencia", sa.Integer(), nullable=False, server_default="5"
-        ),
-        sa.Column(
-            "avisar_vencidas", sa.Boolean(), nullable=False, server_default=sa.true()
-        ),
-        sa.PrimaryKeyConstraint("user_id"),
-        sa.ForeignKeyConstraint(
-            ["user_id"],
-            ["tb_users.id"],
-            name="fk_notif_config_user",
-            ondelete="CASCADE",
-            onupdate="CASCADE",
-        ),
-        comment="Preferências de notificação por usuário",
-    )
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS tb_notificacao_config (
+            user_id INTEGER NOT NULL,
+            ativo BOOLEAN NOT NULL DEFAULT true,
+            dias_antecedencia INTEGER NOT NULL DEFAULT 5,
+            avisar_vencidas BOOLEAN NOT NULL DEFAULT true,
+            PRIMARY KEY (user_id),
+            CONSTRAINT fk_notif_config_user FOREIGN KEY (user_id)
+                REFERENCES tb_users (id) ON DELETE CASCADE ON UPDATE CASCADE
+        );
+    """)
 
-    op.create_table(
-        "tb_despesa_destinatarios",
-        sa.Column("despesa_id", sa.Integer(), nullable=False),
-        sa.Column("user_id", sa.Integer(), nullable=False),
-        sa.PrimaryKeyConstraint("despesa_id", "user_id"),
-        sa.ForeignKeyConstraint(
-            ["despesa_id"],
-            ["tb_despesas.id"],
-            name="fk_destinatario_despesa",
-            ondelete="CASCADE",
-            onupdate="CASCADE",
-        ),
-        sa.ForeignKeyConstraint(
-            ["user_id"],
-            ["tb_users.id"],
-            name="fk_destinatario_user",
-            ondelete="CASCADE",
-            onupdate="CASCADE",
-        ),
-        comment="Quais usuários devem ser notificados de cada despesa",
-    )
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS tb_despesa_destinatarios (
+            despesa_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            PRIMARY KEY (despesa_id, user_id),
+            CONSTRAINT fk_destinatario_despesa FOREIGN KEY (despesa_id)
+                REFERENCES tb_despesas (id) ON DELETE CASCADE ON UPDATE CASCADE,
+            CONSTRAINT fk_destinatario_user FOREIGN KEY (user_id)
+                REFERENCES tb_users (id) ON DELETE CASCADE ON UPDATE CASCADE
+        );
+    """)
+
     op.create_index(
         "ix_tb_despesa_destinatarios_user_id",
         "tb_despesa_destinatarios",
         ["user_id"],
+        if_not_exists=True,
     )
 
 

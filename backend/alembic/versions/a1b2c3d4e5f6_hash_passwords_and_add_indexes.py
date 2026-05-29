@@ -33,8 +33,8 @@ def upgrade() -> None:
             {"hashed": hashed, "id": user_id},
         )
 
-    op.create_index("ix_tb_despesas_user_id", "tb_despesas", ["user_id"])
-    op.create_index("ix_tb_users_nome", "tb_users", ["nome"])
+    op.create_index("ix_tb_despesas_user_id", "tb_despesas", ["user_id"], if_not_exists=True)
+    op.create_index("ix_tb_users_nome", "tb_users", ["nome"], if_not_exists=True)
 
 
 def downgrade() -> None:
