@@ -1,0 +1,14 @@
+# Build artifacts (gerados por build.ps1 / PyInstaller)
+build/
+dist/
+*.spec
+
+# Ambientes virtuais
+.venv/
+.venv_build/
+.venv_test/
+
+# Config local (contém credenciais) e estado de runtime
+config.json
+agent.log
+agent_state.json
