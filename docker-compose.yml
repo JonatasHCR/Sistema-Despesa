@@ -113,7 +113,7 @@ services:
     volumes:
       - ./backups:/backups
       - ./scripts/backup.sh:/backup.sh:ro
-    entrypoint: ["/bin/sh", "/backup.sh"]
+    entrypoint: ["/bin/sh", "-c", "sed 's/\\r//g' /backup.sh > /tmp/backup.sh && exec sh /tmp/backup.sh"]
     depends_on:
       db:
         condition: service_healthy
