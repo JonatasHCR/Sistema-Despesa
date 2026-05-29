@@ -2,7 +2,6 @@ import { NewExpenseForm } from '../../../components/expenses/NewExpenseForm';
 import { ImportExpensesCard } from '@/components/expenses/ImportExpensesCard';
 import PageWrapper from '@/components/layout/PageWrapper';
 
-export default function NewExpensePage() {
   return (
     <PageWrapper>
       <div className="flex flex-col gap-8">
@@ -17,6 +16,7 @@ export default function NewExpensePage() {
         <ImportExpensesCard />
         <NewExpenseForm />
       </div>
-    </PageWrapper>
+      <NewExpenseForm users={users} />
+    </div>
   );
 }

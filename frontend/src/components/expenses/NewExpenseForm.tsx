@@ -1,4 +1,4 @@
-
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -60,9 +60,7 @@ const expenseFormSchema = z.object({
   despesas: z.array(singleExpenseSchema).min(1, 'Adicione pelo menos uma despesa.'),
 });
 
-type ExpenseFormValues = z.infer<typeof expenseFormSchema>;
-
-export function NewExpenseForm() {
+export function NewExpenseForm({ users }: { users: User[] }) {
   const router = useRouter();
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
