@@ -9,6 +9,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from app.api.version_1.endpoints.despesa import DespesaEndpoint
 from app.api.version_1.endpoints.user import UserEndpoint
 from app.api.version_1.endpoints.auth import AuthEndpoint
+from app.api.version_1.endpoints.notificacao import NotificacaoEndpoint
 from app.core.rate_limit import limiter
 
 
@@ -21,6 +22,7 @@ app = FastAPI(
         {"name": "User", "description": "Operações com Usuários"},
         {"name": "Despesa", "description": "Operações com Despesas"},
         {"name": "Auth", "description": "Operações de Autenticação"},
+        {"name": "Notificacao", "description": "Configuração e digest de notificações"},
     ],
 )
 
@@ -43,3 +45,4 @@ app.add_middleware(
 app.include_router(UserEndpoint().router)
 app.include_router(DespesaEndpoint().router)
 app.include_router(AuthEndpoint().router)
+app.include_router(NotificacaoEndpoint().router)
