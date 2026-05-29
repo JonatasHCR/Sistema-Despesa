@@ -7,7 +7,7 @@ from app.repository.user import UserRepository
 from .base import BaseService
 
 
-class UserService(BaseService[UserRepository, UserSchema, UserOutputSchema]):
+class UserService(BaseService[UserRepository, UserSchema, UserUpdateSchema, UserOutputSchema]):
     def __init__(self, db: AsyncSession):
         super().__init__(UserRepository, UserOutputSchema, db)
 
@@ -24,6 +24,11 @@ class UserService(BaseService[UserRepository, UserSchema, UserOutputSchema]):
     async def get_model_by_username(self, username: str) -> User | None:
         """Retorna o objeto User cru (com hash da senha) para fluxos de autenticação."""
         return await self.repository.get_by_username(username)
+
+    async def update_password_hash(self, id: int, hashed_password: str) -> None:
+        """Grava um hash já calculado direto na coluna (sem re-hashear). Usado
+        para migrar hashes antigos para Argon2 durante o login."""
+        await self.repository.update(id, senha=hashed_password)
 
     async def create(self, schema: UserSchema) -> UserOutputSchema:
         data = schema.model_dump()
