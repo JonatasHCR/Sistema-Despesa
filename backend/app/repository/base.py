@@ -34,9 +34,13 @@ class BaseRepository(Generic[Model]):
         busca = await self.__db.execute(
             select(self.model).where(*filter)
         )
-        busca = busca.scalars().all()
+        return busca.scalars().all()
 
-        return busca
+    async def get_first_by_filter(self, *filter) -> Model | None:
+        busca = await self.__db.execute(
+            select(self.model).where(*filter).limit(1)
+        )
+        return busca.scalar_one_or_none()
 
     async def create(self, **data) -> Model:
         obj = self.model(**data)

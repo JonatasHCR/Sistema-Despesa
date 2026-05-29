@@ -10,15 +10,10 @@ class UserRepository(BaseRepository[User]):
         super().__init__(User, db)
 
     async def get_by_email(self, email: str) -> User:
-        busca = await self.get_by_filter(User.email == email)
-        if busca:
-            return busca[0]
+        user = await self.get_first_by_filter(User.email == email)
+        if user is None:
+            raise ValueError(f"Usuário com email = {email} não encontrado")
+        return user
 
-        raise ValueError(f"Usuário com email = {email} não encontrado")
-    
     async def get_by_username(self, username: str) -> User | None:
-        busca = await self.get_by_filter(User.nome == username)
-        if busca:
-            return busca[0]
-
-        return None
+        return await self.get_first_by_filter(User.nome == username)

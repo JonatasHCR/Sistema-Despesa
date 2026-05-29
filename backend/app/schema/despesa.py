@@ -27,6 +27,11 @@ class DespesaBase(BaseModel):
 class DespesaSchema(DespesaBase):
     """Schema de entrada — o user_id é injetado pelo endpoint a partir do token."""
 
+    destinatarios: Optional[list[int]] = Field(
+        None,
+        description="IDs dos usuários a notificar. None = notifica o dono; lista vazia = ninguém.",
+    )
+
 
 class DespesaUpdateSchema(BaseModel):
     """Update parcial — todos os campos opcionais. Backend funde com o estado atual."""
@@ -37,6 +42,9 @@ class DespesaUpdateSchema(BaseModel):
     vencimento: Optional[date] = None
     valor: Optional[float] = Field(None, gt=0)
     descricao: Optional[str] = Field(None, max_length=20)
+    destinatarios: Optional[list[int]] = Field(
+        None, description="Se enviado, substitui a lista de destinatários da despesa."
+    )
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -54,6 +62,9 @@ class DespesaOutputSchema(DespesaBase):
     id: int = Field(..., gt=0)
     user_id: int = Field(..., gt=0)
     user_nome: Optional[str] = Field(None, description="Nome do usuário (join)")
+    destinatarios: list[int] = Field(
+        default_factory=list, description="IDs dos usuários notificados desta despesa"
+    )
 
     @model_validator(mode="before")
     @classmethod
@@ -62,5 +73,18 @@ class DespesaOutputSchema(DespesaBase):
         if hasattr(data, "__table__"):
             base = {c.name: getattr(data, c.name) for c in data.__table__.columns}
             base["user_nome"] = getattr(data, "user_nome", None)
+            base["destinatarios"] = getattr(data, "destinatarios", []) or []
             return base
         return data
+
+
+class ImportRowError(BaseModel):
+    linha: int = Field(..., description="Número da linha na planilha (1 = cabeçalho)")
+    erro: str = Field(..., description="Motivo pelo qual a linha foi rejeitada")
+
+
+class ImportResultSchema(BaseModel):
+    total_linhas: int = Field(..., description="Total de linhas de dados lidas")
+    criadas: int = Field(..., description="Quantas despesas foram criadas")
+    falhas: int = Field(..., description="Quantas linhas foram rejeitadas")
+    erros: list[ImportRowError] = Field(default_factory=list)
