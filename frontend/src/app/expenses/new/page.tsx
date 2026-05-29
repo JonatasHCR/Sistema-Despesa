@@ -1,4 +1,5 @@
 import { NewExpenseForm } from '../../../components/expenses/NewExpenseForm';
+import { ImportExpensesCard } from '@/components/expenses/ImportExpensesCard';
 import PageWrapper from '@/components/layout/PageWrapper';
 
 export default function NewExpensePage() {
@@ -13,6 +14,7 @@ export default function NewExpensePage() {
             Preencha os campos abaixo para adicionar uma nova despesa.
           </p>
         </div>
+        <ImportExpensesCard />
         <NewExpenseForm />
       </div>
     </PageWrapper>
