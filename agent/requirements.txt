@@ -1,0 +1,2 @@
+requests>=2.31
+win11toast>=0.34

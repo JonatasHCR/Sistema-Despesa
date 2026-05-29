@@ -1,3 +1,4 @@
+
 from typing import Generic, TypeVar
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,7 +14,9 @@ class BaseRepository(Generic[Model]):
         self.__db = db
 
     async def get_all(self) -> list[Model]:
-        busca = await self.__db.execute(select(self.model))
+        busca = await self.__db.execute(
+            select(self.model)
+        )
         busca = busca.scalars().all()
 
         return busca
@@ -31,9 +34,13 @@ class BaseRepository(Generic[Model]):
         busca = await self.__db.execute(
             select(self.model).where(*filter)
         )
-        busca = busca.scalars().all()
+        return busca.scalars().all()
 
-        return busca
+    async def get_first_by_filter(self, *filter) -> Model | None:
+        busca = await self.__db.execute(
+            select(self.model).where(*filter).limit(1)
+        )
+        return busca.scalar_one_or_none()
 
     async def create(self, **data) -> Model:
         obj = self.model(**data)
@@ -45,7 +52,8 @@ class BaseRepository(Generic[Model]):
     async def update(self, id: int, **data) -> Model:
         obj = await self.get_by_id(id)
         for key, value in data.items():
-            setattr(obj, key, value)
+            if value is not None:
+                setattr(obj, key, value)
         self.__db.add(obj)
         await self.__db.commit()
         await self.__db.refresh(obj)

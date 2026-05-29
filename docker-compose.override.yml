@@ -1,0 +1,28 @@
+services:
+
+  db:
+    # Em dev expomos a porta no host para conectar via DBeaver/psql local.
+    ports:
+      - "127.0.0.1:5432:5432"
+    # Em dev usamos bind mount na pasta local com os dados reais (substitui o volume nomeado do compose principal).
+    volumes:
+      - ./postgres_data_prod:/var/lib/postgresql/data
+
+  backend:
+    # Hot reload via bind mount; UVICORN_RELOAD ativa --reload no CMD do Dockerfile.
+    user: root
+    volumes:
+      - ./backend:/backend
+    environment:
+      UVICORN_RELOAD: "1"
+
+  frontend:
+    # Em dev usamos o estágio "deps" (sem build) + next dev com bind mount.
+    build:
+      target: deps
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    command: npm run dev

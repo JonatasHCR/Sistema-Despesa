@@ -1,77 +1,156 @@
 import pytest
 
-from app.schema.despesa import DespesaSchema
+from app.schema.despesa import DespesaSchema, DespesaUpdateSchema
+from app.schema.user import UserSchema
 from app.service.despesa import DespesaService
+from app.service.user import UserService
 
 
 despesa_teste = {
     "nome": "usuario teste",
     "tipo": "B",
+    "status": "P",
     "valor": 10.50,
     "vencimento": "2024-12-31",
-    "user_id": 1,
 }
+
+user_teste = {
+    "nome": "dono despesa",
+    "email": "dono@gmail.com",
+    "senha": "senha123",
+}
+
+outro_user_teste = {
+    "nome": "outro usuario",
+    "email": "outro@gmail.com",
+    "senha": "senha456",
+}
+
+
+async def _make_user(async_db) -> int:
+    user_service = UserService(async_db)
+    user = await user_service.create(UserSchema(**user_teste))
+    return user.id
+
+
+async def _make_outro_user(async_db) -> int:
+    user_service = UserService(async_db)
+    user = await user_service.create(UserSchema(**outro_user_teste))
+    return user.id
 
 
 @pytest.mark.asyncio
 @pytest.mark.service
 async def test_service_create(async_db):
+    user_id = await _make_user(async_db)
     service = DespesaService(async_db)
-    resposta = await service.create(DespesaSchema(**despesa_teste))
+    resposta = await service.create_for_user(DespesaSchema(**despesa_teste), user_id=user_id)
     assert resposta.id is not None
+    assert resposta.user_id == user_id
 
 
 @pytest.mark.asyncio
 @pytest.mark.service
 async def test_service_get_by_id(async_db):
+    user_id = await _make_user(async_db)
     service = DespesaService(async_db)
-    teste_id = await service.create(DespesaSchema(**despesa_teste))
+    criada = await service.create_for_user(DespesaSchema(**despesa_teste), user_id=user_id)
 
-    despesa = await service.get_by_id(teste_id.id)
+    despesa = await service.get_by_id(criada.id)
     assert despesa.nome == despesa_teste["nome"]
 
 
 @pytest.mark.asyncio
 @pytest.mark.service
 async def test_service_get_by_user_id(async_db):
+    user_id = await _make_user(async_db)
     service = DespesaService(async_db)
-    await service.create(DespesaSchema(**despesa_teste))
+    await service.create_for_user(DespesaSchema(**despesa_teste), user_id=user_id)
 
-    despesas = await service.get_by_user_id(despesa_teste["user_id"])
-    len(despesas) > 0
+    despesas = await service.get_by_user_id(user_id)
+    assert len(despesas) > 0
 
 
 @pytest.mark.asyncio
 @pytest.mark.service
-async def test_service_get_all(async_db):
+async def test_service_get_all_joined(async_db):
+    user_id = await _make_user(async_db)
     service = DespesaService(async_db)
-    await service.create(DespesaSchema(**despesa_teste))
+    await service.create_for_user(DespesaSchema(**despesa_teste), user_id=user_id)
 
-    ativos = await service.get_all()
+    ativos = await service.list_with_user(limit=10, offset=0)
     assert len(ativos) > 0
+    assert ativos[0].user_nome == user_teste["nome"]
 
 
 @pytest.mark.asyncio
 @pytest.mark.service
 async def test_service_update(async_db):
+    user_id = await _make_user(async_db)
     service = DespesaService(async_db)
-    despesa = await service.create(DespesaSchema(**despesa_teste))
-    despesa_id = despesa.id
+    despesa = await service.create_for_user(DespesaSchema(**despesa_teste), user_id=user_id)
 
-    despesa_teste["nome"] = "Nome Alterado"
-    despesa_teste["tipo"] = "N"
-
-    despesa_alterado = await service.update(despesa_id, DespesaSchema(**despesa_teste))
-    assert despesa_alterado.nome == despesa_teste["nome"]
-    assert despesa_alterado.tipo == despesa_teste["tipo"]
+    alterado = await service.update(despesa.id, DespesaSchema(**{**despesa_teste, "nome": "Nome Alterado", "tipo": "N"}))
+    assert alterado.nome == "Nome Alterado"
+    assert alterado.tipo == "N"
 
 
 @pytest.mark.asyncio
 @pytest.mark.service
 async def test_service_delete(async_db):
+    user_id = await _make_user(async_db)
     service = DespesaService(async_db)
-    despesa = await service.create(DespesaSchema(**despesa_teste))
-    despesa_id = despesa.id
+    despesa = await service.create_for_user(DespesaSchema(**despesa_teste), user_id=user_id)
 
-    ativo_deletado = await service.delete(despesa_id)
-    assert ativo_deletado is None
+    resultado = await service.delete(despesa.id)
+    assert resultado is None
+
+
+# --- Testes de ownership (D: verificação de posse no service, não no endpoint) ---
+
+@pytest.mark.asyncio
+@pytest.mark.service
+async def test_service_update_if_owner_sucesso(async_db):
+    user_id = await _make_user(async_db)
+    service = DespesaService(async_db)
+    despesa = await service.create_for_user(DespesaSchema(**despesa_teste), user_id=user_id)
+
+    alterado = await service.update_if_owner(despesa.id, DespesaUpdateSchema(nome="Alterado"), user_id)
+    assert alterado.nome == "Alterado"
+
+
+@pytest.mark.asyncio
+@pytest.mark.service
+async def test_service_update_if_owner_proibido(async_db):
+    user_id = await _make_user(async_db)
+    outro_id = await _make_outro_user(async_db)
+    service = DespesaService(async_db)
+    despesa = await service.create_for_user(DespesaSchema(**despesa_teste), user_id=user_id)
+
+    with pytest.raises(PermissionError):
+        await service.update_if_owner(despesa.id, DespesaUpdateSchema(nome="Invasão"), outro_id)
+
+
+@pytest.mark.asyncio
+@pytest.mark.service
+async def test_service_delete_if_owner_sucesso(async_db):
+    user_id = await _make_user(async_db)
+    service = DespesaService(async_db)
+    despesa = await service.create_for_user(DespesaSchema(**despesa_teste), user_id=user_id)
+
+    await service.delete_if_owner(despesa.id, user_id)
+
+    with pytest.raises(ValueError):
+        await service.get_by_id(despesa.id)
+
+
+@pytest.mark.asyncio
+@pytest.mark.service
+async def test_service_delete_if_owner_proibido(async_db):
+    user_id = await _make_user(async_db)
+    outro_id = await _make_outro_user(async_db)
+    service = DespesaService(async_db)
+    despesa = await service.create_for_user(DespesaSchema(**despesa_teste), user_id=user_id)
+
+    with pytest.raises(PermissionError):
+        await service.delete_if_owner(despesa.id, outro_id)

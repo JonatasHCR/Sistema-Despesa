@@ -1,0 +1,7 @@
+{
+  "base_url": "http://192.168.0.10:8000",
+  "nome": "seu_usuario",
+  "senha": "sua_senha",
+  "dashboard_url": "http://192.168.0.10:3000",
+  "forcar": false
+}

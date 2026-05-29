@@ -1,9 +1,24 @@
-from fastapi import Depends, HTTPException, APIRouter
+
+from fastapi import Depends, HTTPException, APIRouter, File, UploadFile, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.version_1.dependencies import get_current_user
 from app.core.database import get_db
+from app.model.user import User
 from app.service.despesa import DespesaService
-from app.schema.despesa import DespesaSchema, DespesaOutputSchema
+from app.service.excel_import import build_template_xlsx
+from app.schema.despesa import (
+    DespesaSchema,
+    DespesaOutputSchema,
+    DespesaUpdateSchema,
+    ImportResultSchema,
+)
+
+
+_XLSX_MEDIA_TYPE = (
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
 
 
 class DespesaEndpoint:
@@ -14,6 +29,12 @@ class DespesaEndpoint:
         self.register_routes()
 
     def register_routes(self):
+        # Rotas literais antes das dinâmicas (/{id}) para evitar conflito de match.
+        self.router.post("/import", response_model=ImportResultSchema, status_code=200)(
+            self._import_excel
+        )
+        self.router.get("/import/modelo")(self._import_template)
+
         self.router.post("/", response_model=DespesaOutputSchema, status_code=201)(
             self._create
         )
@@ -29,63 +50,110 @@ class DespesaEndpoint:
         )
 
     async def _get_by_id(
-        self, id: int, db: AsyncSession = Depends(get_db)
+        self,
+        id: int,
+        db: AsyncSession = Depends(get_db),
+        _: User = Depends(get_current_user),
     ) -> DespesaOutputSchema:
         service = self.service(db)
         try:
-            return await service.get_by_id(id)
+            return await service.get_one(id)
         except ValueError as error:
             raise HTTPException(
                 status_code=404,
-                detail=str(error).format(
-                    id=id, objeto="Despesa"
-                ),
+                detail=str(error).format(id=id, objeto="Despesa"),
             )
 
     async def _get_all(
-        self, db: AsyncSession = Depends(get_db)
+        self,
+        limit: int = 100,
+        offset: int = 0,
+        db: AsyncSession = Depends(get_db),
+        _: User = Depends(get_current_user),
     ) -> list[DespesaOutputSchema]:
         service = self.service(db)
-        return await service.get_all()
+        return await service.list_with_user(limit=limit, offset=offset)
 
     async def _create(
-        self, schema: DespesaSchema, db: AsyncSession = Depends(get_db)
+        self,
+        schema: DespesaSchema,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user),
     ) -> DespesaOutputSchema:
         service = self.service(db)
-
-        return await service.create(schema)
+        return await service.create_for_user(schema, user_id=current_user.id)
 
     async def _update(
-        self, id: int, schema: DespesaSchema, db: AsyncSession = Depends(get_db)
+        self,
+        id: int,
+        schema: DespesaUpdateSchema,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user),
     ) -> DespesaOutputSchema:
         service = self.service(db)
         try:
-            return await service.update(id, schema)
+            return await service.update_if_owner(id, schema, current_user.id)
+        except PermissionError:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Sem permissão")
         except ValueError as error:
-            raise HTTPException(
-                status_code=404,
-                detail=str(error).format(
-                    id=id, objeto="Despesa"
-                ),
-            )
+            raise HTTPException(status_code=404, detail=str(error).format(id=id, objeto="Despesa"))
 
-    async def _delete(self, id: int, db: AsyncSession = Depends(get_db)) -> None:
+    async def _delete(
+        self,
+        id: int,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user),
+    ) -> None:
         service = self.service(db)
         try:
-            return await service.delete(id)
+            await service.delete_if_owner(id, current_user.id)
+        except PermissionError:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Sem permissão")
         except ValueError as error:
-            raise HTTPException(
-                status_code=404,
-                detail=str(error).format(
-                    id=id, objeto="Despesa"
-                ),
-            )
+            raise HTTPException(status_code=404, detail=str(error).format(id=id, objeto="Despesa"))
 
     async def get_by_user_id(
-        self, user_id: int, db: AsyncSession = Depends(get_db)
+        self,
+        user_id: int,
+        db: AsyncSession = Depends(get_db),
+        _: User = Depends(get_current_user),
     ) -> list[DespesaOutputSchema]:
         service = self.service(db)
         try:
             return await service.get_by_user_id(user_id)
         except ValueError as error:
             raise HTTPException(status_code=400, detail=str(error))
+
+    async def _import_excel(
+        self,
+        file: UploadFile = File(...),
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user),
+    ) -> ImportResultSchema:
+        filename = (file.filename or "").lower()
+        if not filename.endswith(".xlsx"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Envie um arquivo .xlsx",
+            )
+        content = await file.read()
+        service = self.service(db)
+        try:
+            return await service.import_excel(content, user_id=current_user.id)
+        except ValueError as error:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)
+            )
+
+    async def _import_template(
+        self,
+        _: User = Depends(get_current_user),
+    ) -> StreamingResponse:
+        content = build_template_xlsx()
+        return StreamingResponse(
+            iter([content]),
+            media_type=_XLSX_MEDIA_TYPE,
+            headers={
+                "Content-Disposition": "attachment; filename=modelo_despesas.xlsx"
+            },
+        )

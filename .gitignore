@@ -8,6 +8,7 @@ instance/*
 .webassets-cache
 .env.teste
 .env.producao
+backup.sql
 
 ### Flask.Python Stack ###
 # Byte-compiled / optimized / DLL files
@@ -299,3 +300,14 @@ pyrightconfig.json
 
 # End of https://www.toptal.com/developers/gitignore/api/python,flask,nextjs
 
+backup/
+
+postrgress_data/
+postgres_data/
+postgres_data_prod/
+postgres_data_prod_backup_*.tar.gz
+backups/
+
+.env
+
+restore_db.ps1

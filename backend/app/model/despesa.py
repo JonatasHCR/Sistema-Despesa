@@ -18,11 +18,12 @@ class Despesa(Base):
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String(100), nullable=False)
     tipo = Column(String(100), nullable=False)
-    valor = Column(Numeric, nullable=False)
+    valor = Column(Numeric(10, 2), nullable=False)
     status = Column(String(1), nullable=False)
     vencimento = Column(Date, nullable=False, comment="Data de vencimento da despesa")
+    descricao = Column(String(20), nullable=True, default="PARCELA ÚNICA", comment="Descrição da despesa, ex: 'Parcela 1 de 3'")
     user_id = Column(
-        Integer, nullable=False, comment="ID do usuário que criou a despesa"
+        Integer, nullable=False, index=True, comment="ID do usuário que criou a despesa"
     )
 
     __table_args__ = (

@@ -1,3 +1,4 @@
+
 from os.path import dirname, join
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -6,11 +7,23 @@ BASE_DIR = dirname(dirname(dirname(__file__)))
 
 
 class Settings(BaseSettings):
-    DATABASE_URL: str
-    ENV: str = "producao"
+    ENGINE: str
+    DB_USER: str
+    DB_PASSWORD: str
+    DB_HOST: str
+    DB_PORT: str
+    DB_NAME: str
+
+    JWT_SECRET_KEY: str
+    JWT_ALGORITHM: str = "HS256"
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
 
     model_config = SettingsConfigDict(
-        env_file=join(BASE_DIR, f".env.{ENV}"),
+        env_file=join(BASE_DIR, f".env"),
         env_file_encoding="utf-8",
         extra="ignore",
     )
+
+    def database_url(self) -> str:
+        return f"{self.ENGINE}://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+

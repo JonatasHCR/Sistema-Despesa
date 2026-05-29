@@ -1,11 +1,43 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { Loader } from 'lucide-react';
+
 import { EditExpenseForm } from '@/components/expenses/EditExpenseForm';
 import { getExpenseById } from '@/lib/api';
+import { type Expense } from '@/lib/types';
 
-export default async function EditExpensePage({ params: { id } }: { params: { id: string } }) {
-  const expense = await getExpenseById(Number(id));
+export default function EditExpensePage() {
+  const params = useParams<{ id: string }>();
+  const router = useRouter();
+  const [expense, setExpense] = useState<Expense | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  if (!expense) {
-    return <div>Despesa não encontrada</div>;
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      const data = await getExpenseById(params.id);
+      if (cancelled) return;
+      if (!data) {
+        router.replace('/');
+        return;
+      }
+      setExpense(data);
+      setLoading(false);
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [params.id, router]);
+
+  if (loading || !expense) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   return (
