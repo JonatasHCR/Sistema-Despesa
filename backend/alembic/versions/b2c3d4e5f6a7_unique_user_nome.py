@@ -42,7 +42,17 @@ def upgrade() -> None:
                 {"n": new_nome, "i": user_id},
             )
 
-    op.create_unique_constraint("uq_tb_users_nome", "tb_users", ["nome"])
+    op.execute("""
+        DO $$ BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_constraint
+                WHERE conname = 'uq_tb_users_nome'
+                  AND conrelid = 'tb_users'::regclass
+            ) THEN
+                ALTER TABLE tb_users ADD CONSTRAINT uq_tb_users_nome UNIQUE (nome);
+            END IF;
+        END $$;
+    """)
 
 
 def downgrade() -> None:

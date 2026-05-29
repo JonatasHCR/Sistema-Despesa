@@ -29,7 +29,7 @@ def upgrade() -> None:
     op.drop_index("ix_tb_users_nome", table_name="tb_users", if_exists=True)
 
     # Índice em vencimento: ORDER BY e WHERE vencimento <= X em toda listagem e digest
-    op.create_index("ix_tb_despesas_vencimento", "tb_despesas", ["vencimento"])
+    op.create_index("ix_tb_despesas_vencimento", "tb_despesas", ["vencimento"], if_not_exists=True)
 
     # valor NUMERIC → NUMERIC(10,2): impõe precisão monetária (máx. 10 dígitos, 2 decimais)
     op.alter_column(
