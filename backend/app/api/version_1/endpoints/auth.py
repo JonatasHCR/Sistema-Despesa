@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from app.core.database import get_db
 from app.core.rate_limit import limiter
-from app.core.security import create_access_token, verify_password
+from app.core.security import create_access_token, verify_and_update_password
 from app.service.user import UserService
 from app.schema.user import TokenSchema, UserOutputSchema
 
@@ -36,12 +36,22 @@ class AuthEndpoint:
         service = UserService(db)
         user = await service.get_model_by_username(login_data.nome)
 
-        if user is None or not verify_password(login_data.senha, user.senha):
+        valid, updated_hash = (
+            verify_and_update_password(login_data.senha, user.senha)
+            if user is not None
+            else (False, None)
+        )
+
+        if not valid:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Usuário ou senha inválidos",
                 headers={"WWW-Authenticate": "Bearer"},
             )
+
+        # Migra hashes legados (bcrypt) para Argon2 de forma transparente no login.
+        if updated_hash is not None:
+            await service.update_password_hash(user.id, updated_hash)
 
         token = create_access_token(subject=user.id)
         return TokenSchema(

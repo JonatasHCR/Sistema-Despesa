@@ -1,24 +1,45 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-import bcrypt
 import jwt
+from pwdlib import PasswordHash
+from pwdlib.hashers.argon2 import Argon2Hasher
+from pwdlib.hashers.bcrypt import BcryptHasher
 
 from app.core.settings import Settings
 
 
 _settings = Settings()
 
+# Argon2 é o algoritmo padrão para novas senhas; o BcryptHasher fica na lista
+# apenas para verificar hashes antigos (bcrypt) já gravados no banco. No login,
+# `verify_and_update_password` regrava esses hashes em Argon2 automaticamente.
+_password_hash = PasswordHash((
+    Argon2Hasher(),
+    BcryptHasher(),
+))
+
 
 def hash_password(plain_password: str) -> str:
-    return bcrypt.hashpw(plain_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    return _password_hash.hash(plain_password)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     try:
-        return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
-    except ValueError:
+        return _password_hash.verify(plain_password, hashed_password)
+    except Exception:
         return False
+
+
+def verify_and_update_password(
+    plain_password: str, hashed_password: str
+) -> tuple[bool, str | None]:
+    """Verifica a senha e, se o hash usar um esquema antigo (bcrypt), devolve
+    um novo hash em Argon2 no segundo item da tupla (caso contrário, None)."""
+    try:
+        return _password_hash.verify_and_update(plain_password, hashed_password)
+    except Exception:
+        return False, None
 
 
 def create_access_token(subject: str | int, extra_claims: dict[str, Any] | None = None) -> str:
