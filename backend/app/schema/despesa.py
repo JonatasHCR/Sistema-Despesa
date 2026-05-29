@@ -7,14 +7,14 @@ from pydantic import BaseModel, Field, ConfigDict, field_validator, model_valida
 class DespesaBase(BaseModel):
     nome: str = Field(..., description="Nome da despesa")
     tipo: str = Field(..., description="Tipo da despesa")
-    status: Literal["P", "Q"] = Field(
+    status: DespesaStatusEnum = Field(
         ..., description="Status da despesa: P - Pendente, Q - Quitada"
     )
     vencimento: date = Field(..., description="Data de vencimento da despesa")
     valor: float = Field(..., gt=0, description="Valor da despesa")
     descricao: Optional[str] = Field("PARCELA ÚNICA", max_length=20, description="Descrição da despesa")
 
-    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True, use_enum_values=True)
 
     @field_validator("vencimento", mode="before")
     @classmethod

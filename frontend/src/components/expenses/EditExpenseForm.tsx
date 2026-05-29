@@ -56,8 +56,6 @@ const expenseFormSchema = z.object({
   destinatarios: z.array(z.number()),
 });
 
-type ExpenseFormValues = z.infer<typeof expenseFormSchema>;
-
 export function EditExpenseForm({ expense }: { expense: Expense }) {
   const router = useRouter();
   const { toast } = useToast();
