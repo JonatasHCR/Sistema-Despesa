@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { type Expense, type ExpenseStatus, type DynamicExpenseStatus } from '@/lib/types';
 import { ExpenseCard } from './ExpenseCard';
 import { StatusCard } from './StatusCard';
@@ -86,26 +85,23 @@ export function ExpenseDashboard() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   const fetchAndSetExpenses = useCallback(async () => {
-    if (rawExpenses.length === 0) {
-      setIsLoading(true);
-    }
     try {
         const data = await getExpenses();
         setRawExpenses(data || []);
     } catch (error) {
+        // Em polls de fundo mantemos os dados atuais em vez de esvaziar a lista.
         console.error("Failed to fetch expenses:", error);
-        setRawExpenses([]);
     } finally {
         setIsLoading(false);
     }
-  }, [rawExpenses.length]);
+  }, []);
 
   useEffect(() => {
     fetchAndSetExpenses();
 
     const interval = setInterval(() => {
         fetchAndSetExpenses();
-    }, 5000);
+    }, 30_000);
 
     return () => clearInterval(interval);
   }, [fetchAndSetExpenses]);
@@ -424,26 +420,20 @@ export function ExpenseDashboard() {
             </div>
         </div>
         <div className="p-4 sm:p-6 pt-0">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentPage + itemsPerPage + filterField + String(filterValue) + selectedStatus + sortField + sortDirection}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-              className="min-h-[300px]"
-            >
+          <div
+            key={currentPage + itemsPerPage + filterField + String(filterValue) + selectedStatus + sortField + sortDirection}
+            className="min-h-[300px] animate-in fade-in slide-in-from-bottom-3 duration-150"
+          >
               {currentExpenses.length > 0 ? (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                   {currentExpenses.map((expense, index) => (
-                    <motion.div
+                    <div
                       key={expense.id}
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: index * 0.05 }}
+                      className="animate-in fade-in zoom-in-95 duration-150"
+                      style={{ animationDelay: `${Math.min(index, 6) * 25}ms` }}
                     >
                       <ExpenseCard expense={expense} onUpdate={fetchAndSetExpenses} />
-                    </motion.div>
+                    </div>
                   ))}
                 </div>
               ) : (
@@ -459,8 +449,7 @@ export function ExpenseDashboard() {
                     </p>
                 </div>
               )}
-            </motion.div>
-          </AnimatePresence>
+            </div>
         </div>
         {sortedAndFilteredExpenses.length > 0 && (
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t p-3 sm:p-4">

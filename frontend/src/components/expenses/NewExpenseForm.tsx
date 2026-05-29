@@ -29,6 +29,7 @@ import { type User, type Expense } from '@/lib/types';
 import { Combobox } from '@/components/ui/combobox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { RecipientsField } from './RecipientsField';
 
 const singleExpenseSchema = z.object({
   valor: z.string().refine((val) => {
@@ -55,6 +56,7 @@ const expenseFormSchema = z.object({
   nome: z.string().min(2, {
     message: 'O nome deve ter pelo menos 2 caracteres.',
   }),
+  destinatarios: z.array(z.number()),
   despesas: z.array(singleExpenseSchema).min(1, 'Adicione pelo menos uma despesa.'),
 });
 
@@ -81,6 +83,7 @@ export function NewExpenseForm() {
     resolver: zodResolver(expenseFormSchema),
     defaultValues: {
       nome: '',
+      destinatarios: [],
       despesas: [
         {
           valor: '',
@@ -99,6 +102,9 @@ export function NewExpenseForm() {
       const despesas = form.getValues('despesas');
       if (despesas.length > 0 && despesas[0].user_id === 0) {
         form.setValue('despesas.0.user_id', user.id);
+      }
+      if (form.getValues('destinatarios').length === 0) {
+        form.setValue('destinatarios', [user.id]);
       }
     }
   }, [user, form]);
@@ -153,9 +159,10 @@ export function NewExpenseForm() {
         descricao: d.descricao || "PARCELA ÚNICA",
         user_id: user.id,
         vencimento: formatISO(d.vencimento),
+        destinatarios: data.destinatarios,
       }));
 
-      await addExpense(expensesToCreate as Omit<Expense, 'id' | 'userName' | 'dynamicStatus'>[]);
+      await addExpense(expensesToCreate);
 
       toast({
         title: 'Sucesso!',
@@ -239,6 +246,20 @@ export function NewExpenseForm() {
                         isCreatable={true}
                     />
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <Controller
+              control={form.control}
+              name="destinatarios"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Notificar (destinatários)</FormLabel>
+                  <RecipientsField value={field.value} onChange={field.onChange} />
+                  <p className="text-xs text-muted-foreground">
+                    Quem receberá o aviso de vencimento desta despesa.
+                  </p>
                 </FormItem>
               )}
             />

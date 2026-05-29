@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import {
@@ -28,6 +28,7 @@ import { type Expense } from '@/lib/types';
 import { updateExpense, getExpenses } from '@/lib/api';
 import { Combobox } from '@/components/ui/combobox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RecipientsField } from './RecipientsField';
 
 const expenseFormSchema = z.object({
   nome: z.string().min(2, {
@@ -52,6 +53,7 @@ const expenseFormSchema = z.object({
     message: 'ID do usuário é inválido.'
   }),
   userName: z.string().optional(),
+  destinatarios: z.array(z.number()),
 });
 
 type ExpenseFormValues = z.infer<typeof expenseFormSchema>;
@@ -86,6 +88,7 @@ export function EditExpenseForm({ expense }: { expense: Expense }) {
       vencimento: parseISO(expense.vencimento),
       descricao: expense.descricao || 'PARCELA ÚNICA',
       userName: expense.userName || String(expense.user_id),
+      destinatarios: expense.destinatarios ?? [],
     },
   });
   
@@ -286,6 +289,19 @@ export function EditExpenseForm({ expense }: { expense: Expense }) {
                   )}
                 />
             </div>
+            <Controller
+              control={form.control}
+              name="destinatarios"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Notificar (destinatários)</FormLabel>
+                  <RecipientsField value={field.value} onChange={field.onChange} />
+                  <p className="text-xs text-muted-foreground">
+                    Quem receberá o aviso de vencimento desta despesa.
+                  </p>
+                </FormItem>
+              )}
+            />
           </CardContent>
           <CardFooter className="flex flex-col sm:flex-row sm:justify-end gap-2 sm:gap-4 p-4 sm:p-6">
             <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => router.back()}>
