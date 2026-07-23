@@ -88,13 +88,11 @@ class DespesaEndpoint:
         id: int,
         schema: DespesaUpdateSchema,
         db: AsyncSession = Depends(get_db),
-        current_user: User = Depends(get_current_user),
+        _: User = Depends(get_current_user),
     ) -> DespesaOutputSchema:
         service = self.service(db)
         try:
-            return await service.update_if_owner(id, schema, current_user.id)
-        except PermissionError:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Sem permissão")
+            return await service.update_partial(id, schema)
         except ValueError as error:
             raise HTTPException(status_code=404, detail=str(error).format(id=id, objeto="Despesa"))
 
@@ -102,13 +100,11 @@ class DespesaEndpoint:
         self,
         id: int,
         db: AsyncSession = Depends(get_db),
-        current_user: User = Depends(get_current_user),
+        _: User = Depends(get_current_user),
     ) -> None:
         service = self.service(db)
         try:
-            await service.delete_if_owner(id, current_user.id)
-        except PermissionError:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Sem permissão")
+            await service.delete(id)
         except ValueError as error:
             raise HTTPException(status_code=404, detail=str(error).format(id=id, objeto="Despesa"))
 
