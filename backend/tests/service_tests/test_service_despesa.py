@@ -106,51 +106,41 @@ async def test_service_delete(async_db):
     assert resultado is None
 
 
-# --- Testes de ownership (D: verificação de posse no service, não no endpoint) ---
+# --- Testes de edição/exclusão compartilhada (qualquer usuário do setor pode alterar) ---
 
 @pytest.mark.asyncio
 @pytest.mark.service
-async def test_service_update_if_owner_sucesso(async_db):
+async def test_service_update_partial_sucesso(async_db):
     user_id = await _make_user(async_db)
     service = DespesaService(async_db)
     despesa = await service.create_for_user(DespesaSchema(**despesa_teste), user_id=user_id)
 
-    alterado = await service.update_if_owner(despesa.id, DespesaUpdateSchema(nome="Alterado"), user_id)
+    alterado = await service.update_partial(despesa.id, DespesaUpdateSchema(nome="Alterado"))
     assert alterado.nome == "Alterado"
 
 
 @pytest.mark.asyncio
 @pytest.mark.service
-async def test_service_update_if_owner_proibido(async_db):
+async def test_service_update_de_despesa_de_outro_usuario(async_db):
     user_id = await _make_user(async_db)
     outro_id = await _make_outro_user(async_db)
     service = DespesaService(async_db)
     despesa = await service.create_for_user(DespesaSchema(**despesa_teste), user_id=user_id)
 
-    with pytest.raises(PermissionError):
-        await service.update_if_owner(despesa.id, DespesaUpdateSchema(nome="Invasão"), outro_id)
+    # Outro usuário do mesmo setor pode editar a despesa livremente.
+    alterado = await service.update_partial(despesa.id, DespesaUpdateSchema(nome="Alterado"))
+    assert alterado.nome == "Alterado"
+    assert outro_id  # criado apenas para representar outro usuário do setor
 
 
 @pytest.mark.asyncio
 @pytest.mark.service
-async def test_service_delete_if_owner_sucesso(async_db):
+async def test_service_delete_sucesso(async_db):
     user_id = await _make_user(async_db)
     service = DespesaService(async_db)
     despesa = await service.create_for_user(DespesaSchema(**despesa_teste), user_id=user_id)
 
-    await service.delete_if_owner(despesa.id, user_id)
+    await service.delete(despesa.id)
 
     with pytest.raises(ValueError):
         await service.get_by_id(despesa.id)
-
-
-@pytest.mark.asyncio
-@pytest.mark.service
-async def test_service_delete_if_owner_proibido(async_db):
-    user_id = await _make_user(async_db)
-    outro_id = await _make_outro_user(async_db)
-    service = DespesaService(async_db)
-    despesa = await service.create_for_user(DespesaSchema(**despesa_teste), user_id=user_id)
-
-    with pytest.raises(PermissionError):
-        await service.delete_if_owner(despesa.id, outro_id)

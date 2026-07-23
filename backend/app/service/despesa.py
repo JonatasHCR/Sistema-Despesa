@@ -89,18 +89,6 @@ class DespesaService(
         )
         return len(criadas)
 
-    async def update_if_owner(self, id: int, schema: DespesaUpdateSchema, user_id: int) -> DespesaOutputSchema:
-        despesa = await self.repository.get_by_id(id)
-        if despesa.user_id != user_id:
-            raise PermissionError("Sem permissão")
-        return await self.update_partial(id, schema)
-
-    async def delete_if_owner(self, id: int, user_id: int) -> None:
-        despesa = await self.repository.get_by_id(id)
-        if despesa.user_id != user_id:
-            raise PermissionError("Sem permissão")
-        await self.delete(id)
-
     async def import_excel(self, content: bytes, user_id: int) -> ImportResultSchema:
         """Lê um .xlsx, cria as linhas válidas e reporta as inválidas."""
         validos, erros, total = parse_despesas_xlsx(content)
