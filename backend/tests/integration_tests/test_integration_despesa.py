@@ -47,8 +47,9 @@ async def test_integration_create_update_get_delete_despesa(async_client, auth):
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_integration_cannot_edit_other_users_despesa(async_client, auth):
-    # User A cria uma despesa
+async def test_integration_can_edit_other_users_despesa(async_client, auth):
+    # Sistema usado apenas por pessoas do mesmo setor: qualquer usuário
+    # autenticado pode editar despesas de outro usuário.
     create_response = await async_client.post(URL_DESPESA, json=despesa_teste, headers=auth["headers"])
     despesa_id = create_response.json()["id"]
 
@@ -57,10 +58,11 @@ async def test_integration_cannot_edit_other_users_despesa(async_client, auth):
     login = await async_client.post("/auth/login", json={"nome": "outro", "senha": "outra1"})
     other_headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
 
-    # User B tenta editar a despesa do A
+    # User B edita a despesa do A com sucesso
     response = await async_client.put(
         f"{URL_DESPESA}{despesa_id}",
-        json={**despesa_teste, "nome": "invasão"},
+        json={**despesa_teste, "nome": "compartilhada"},
         headers=other_headers,
     )
-    assert response.status_code == 403
+    assert response.status_code == 200
+    assert response.json()["nome"] == "compartilhada"
