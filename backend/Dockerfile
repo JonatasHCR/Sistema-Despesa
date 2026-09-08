@@ -19,9 +19,11 @@ FROM python:3.12-slim AS runtime
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-# tzdata necessário para date.today() retornar o fuso configurado via TZ.
+# tzdata: date.today() respeita o TZ. postgresql-client: pg_dump/pg_restore da
+# tela de Administracao — cliente 17, mesma versao do servidor (o pg_dump
+# recusa servidor mais novo que ele).
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends tzdata \
+    && apt-get install -y --no-install-recommends tzdata postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Copia apenas os pacotes instalados — poetry e pip não vêm junto.
@@ -41,7 +43,6 @@ USER app
 
 EXPOSE 8000
 
-# Healthcheck sem curl: usa urllib da stdlib do Python.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/documentation')" || exit 1
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
-import { getUsers, getStoredUser } from '@/lib/api';
+import { getUsers, getCurrentUser } from '@/lib/api';
 import { type User } from '@/lib/types';
 import { Loader } from 'lucide-react';
 
@@ -18,7 +18,7 @@ export function RecipientsField({
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
   useEffect(() => {
-    setCurrentUserId(getStoredUser()?.id ?? null);
+    getCurrentUser().then((u) => setCurrentUserId(u?.id ?? null));
     getUsers()
       .then(setUsers)
       .catch(() => setUsers([]))

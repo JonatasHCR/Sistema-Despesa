@@ -34,7 +34,7 @@ def carregar_config(base_dir: str) -> dict:
     if not os.path.exists(caminho):
         raise RuntimeError(
             "config.json não encontrado. Copie config.example.json para "
-            "config.json e preencha base_url, nome e senha."
+            "config.json e preencha base_url, keycloak_url, usuario e senha."
         )
     with open(caminho, "r", encoding="utf-8") as f:
         return json.load(f)
@@ -59,12 +59,33 @@ def marcar_avisado(state_path: str) -> None:
         pass
 
 
-def login(base_url: str, nome: str, senha: str) -> str:
+def login(cfg: dict) -> str:
+    """Pega um token no Keycloak.
+
+    O `/auth/login` do backend deixou de existir quando a autenticação foi para
+    o SSO. Aqui não há navegador nem tela, então o fluxo é o Direct Access Grant
+    (usuário e senha direto no token endpoint), com o client público
+    `despesa-agent`.
+
+    A senha é a MESMA dos três sistemas — a do Keycloak. Quem trocar a senha no
+    Account Console precisa atualizar o config.json desta máquina.
+    """
     resp = requests.post(
-        f"{base_url}/auth/login",
-        json={"nome": nome, "senha": senha},
+        f"{cfg['keycloak_url'].rstrip('/')}/protocol/openid-connect/token",
+        data={
+            "grant_type": "password",
+            "client_id": cfg.get("client_id", "despesa-agent"),
+            "username": cfg["usuario"],
+            "password": cfg["senha"],
+            "scope": "openid profile email",
+        },
         timeout=15,
     )
+    if resp.status_code == 401:
+        raise RuntimeError(
+            "Keycloak recusou usuário ou senha. Se você trocou a senha no "
+            "Account Console, atualize o config.json desta máquina."
+        )
     resp.raise_for_status()
     return resp.json()["access_token"]
 
@@ -115,7 +136,7 @@ def main() -> None:
         if not forcar and ja_avisou_hoje(state_path):
             return  # já notificou hoje (digest diário)
 
-        token = login(cfg["base_url"], cfg["nome"], cfg["senha"])
+        token = login(cfg)
         digest = buscar_digest(cfg["base_url"], token)
 
         if digest.get("total", 0) == 0:

@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { format, parseISO, startOfDay, endOfDay, isPast, isToday, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CalendarIcon, Printer, Loader, Search, X, RefreshCw } from 'lucide-react';
-import { getExpenses, getStoredUser } from '@/lib/api';
+import { getExpenses, getCurrentUser } from '@/lib/api';
 import { type Expense, type DynamicExpenseStatus, type User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -65,7 +65,7 @@ export function ReportGenerator() {
 
   useEffect(() => {
     fetchExpenses();
-    setCurrentUser(getStoredUser());
+    getCurrentUser().then(setCurrentUser);
   }, [fetchExpenses]);
 
   const types = useMemo(() => {

@@ -17,3 +17,11 @@ class UserRepository(BaseRepository[User]):
 
     async def get_by_username(self, username: str) -> User | None:
         return await self.get_first_by_filter(User.nome == username)
+
+    async def find_by_email(self, email: str) -> User | None:
+        """Como `get_by_email`, mas devolve None em vez de levantar — o fluxo de
+        login precisa distinguir "não existe" de erro."""
+        return await self.get_first_by_filter(User.email == email)
+
+    async def find_by_external_id(self, external_id: str) -> User | None:
+        return await self.get_first_by_filter(User.external_id == external_id)

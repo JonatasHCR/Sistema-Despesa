@@ -9,7 +9,6 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-import bcrypt
 
 
 revision: str = "a1b2c3d4e5f6"
@@ -22,6 +21,15 @@ _BCRYPT_PREFIXES = ("$2a$", "$2b$", "$2y$")
 
 
 def upgrade() -> None:
+    # `bcrypt` é importado aqui dentro, e não no topo, porque o Alembic carrega
+    # TODAS as migrations para montar o grafo de revisões — inclusive as já
+    # aplicadas. Com o SSO, o bcrypt saiu das dependências junto com o pwdlib, e
+    # um import no topo derrubaria o `alembic upgrade head` na partida do
+    # container, mesmo sem esta revisão ter nada a fazer.
+    #
+    # Só quem for migrar um banco antigo a partir deste ponto precisa da lib.
+    import bcrypt
+
     bind = op.get_bind()
     users = bind.execute(sa.text("SELECT id, senha FROM tb_users")).fetchall()
     for user_id, senha in users:

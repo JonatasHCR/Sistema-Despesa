@@ -6,23 +6,11 @@ URL_USER = "/users/"
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_integration_create_update_get_delete_user(async_client):
-    user_payload = {
-        "nome": "usuario teste",
-        "email": "teste@gmail.com",
-        "senha": "senha123",
-    }
-
-    response_create = await async_client.post(URL_USER, json=user_payload)
-    assert response_create.status_code == 201, response_create.text
-    assert response_create.json()["nome"] == user_payload["nome"]
-    user_id = response_create.json()["id"]
-
-    login_response = await async_client.post(
-        "/auth/login", json={"nome": user_payload["nome"], "senha": user_payload["senha"]}
-    )
-    assert login_response.status_code == 200, login_response.text
-    headers = {"Authorization": f"Bearer {login_response.json()['access_token']}"}
+async def test_integration_update_get_delete_user(async_client, auth):
+    # A conta já existe: foi provisionada na primeira chamada autenticada, que
+    # é como toda conta nasce agora. Não há mais POST /users/ público.
+    user_id = auth["user"]["id"]
+    headers = auth["headers"]
 
     response_update = await async_client.put(
         f"{URL_USER}{user_id}",
@@ -42,11 +30,21 @@ async def test_integration_create_update_get_delete_user(async_client):
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_integration_update_other_user_forbidden(async_client, auth):
-    # Cria um segundo usuário
-    other_payload = {"nome": "outro", "email": "outro@gmail.com", "senha": "outrasenha"}
-    other_response = await async_client.post(URL_USER, json=other_payload)
-    other_id = other_response.json()["id"]
+async def test_integration_criar_usuario_exige_autenticacao(async_client):
+    """O cadastro público foi fechado junto com o SSO.
+
+    Antes, qualquer um na rede criava conta batendo neste endpoint sem token.
+    """
+    response = await async_client.post(
+        URL_USER, json={"nome": "invasor", "email": "invasor@gmail.com"}
+    )
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_integration_update_other_user_forbidden(async_client, auth, outro_auth):
+    other_id = outro_auth["user"]["id"]
 
     response = await async_client.put(
         f"{URL_USER}{other_id}",

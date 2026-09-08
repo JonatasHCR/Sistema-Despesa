@@ -17,7 +17,9 @@ class UserEndpoint:
         self.register_routes()
 
     def register_routes(self):
-        # Signup é público; demais rotas exigem token.
+        # Nenhuma rota é pública. O cadastro aberto foi fechado junto com o SSO:
+        # quem cria conta é o Keycloak, e o provisionamento local acontece
+        # sozinho no primeiro login válido (ver `dependencies.get_current_user`).
         self.router.post("/", response_model=UserOutputSchema, status_code=201)(
             self._create
         )
@@ -36,7 +38,10 @@ class UserEndpoint:
         )
 
     async def _create(
-        self, schema: UserSchema, db: AsyncSession = Depends(get_db)
+        self,
+        schema: UserSchema,
+        db: AsyncSession = Depends(get_db),
+        _: User = Depends(get_current_user),
     ) -> UserOutputSchema:
         service = self.service(db)
         return await service.create(schema)

@@ -8,8 +8,9 @@ Toda a regra (o que avisar, pra quem, antecedência) fica no backend e é ajust�
 em **Meu Perfil → Notificações**. O agente só lê e mostra.
 
 ## 1. Pré-requisitos
-- Backend e frontend acessíveis na rede local (ex.: `http://192.168.0.10:8000` e `:3000`).
-- Um usuário do sistema para cada máquina (o agente faz login com nome+senha).
+- Backend, frontend e Keycloak acessíveis na rede local (ex.: `http://192.168.0.10:8010`, `:3010` e `:8080`).
+- Um usuário no Keycloak para cada máquina, no grupo `/apps/despesa` (o agente
+  autentica com email+senha pelo Direct Access Grant).
 - A despesa precisa ter a pessoa marcada em **destinatários** para aparecer no digest dela.
 
 ## 2. Gerar o executável (uma vez, na máquina de desenvolvimento)
@@ -32,15 +33,21 @@ Saída: `dist\despesa-agent.exe`.
 
 ```json
 {
-  "base_url": "http://192.168.0.10:8000",
-  "nome": "usuario_da_maquina",
-  "senha": "senha_do_usuario",
-  "dashboard_url": "http://192.168.0.10:3000",
+  "base_url": "http://192.168.0.10:8010",
+  "keycloak_url": "http://192.168.0.10:8080/realms/ufc",
+  "client_id": "despesa-agent",
+  "usuario": "usuario@ufcengenharia.com.br",
+  "senha": "senha_do_keycloak",
+  "dashboard_url": "http://192.168.0.10:3010",
   "forcar": false
 }
 ```
 
-- `base_url`: URL do **backend** alcançável na rede.
+- `base_url`: URL do **backend** alcançável na rede (porta 8010).
+- `keycloak_url`: URL do **realm** no Keycloak. O agente pede o token aqui,
+  não mais ao backend — o `/auth/login` dele deixou de existir com o SSO.
+- `usuario`/`senha`: as MESMAS credenciais dos três sistemas. Quem trocar a
+  senha no Account Console precisa atualizar este arquivo.
 - `dashboard_url`: URL do **frontend** (aberto ao clicar no toast).
 - `forcar`: `true` ignora o controle de "uma vez por dia" (útil só para testar).
 
@@ -81,11 +88,24 @@ schtasks /Create /TN "DespesaAgent-Diario" /TR "$exe" /SC DAILY /ST 08:00 /RL LI
     registrado, senão o Windows descarta o toast em silêncio). Para mudar o nome
     exibido, registre um atalho com AUMID próprio e ponha em `config.json` → `"app_id"`.
 - **Nada no log / `connection refused`**: o backend não está acessível — confira se a
-  stack está no ar (`http://IP:8000/documentation` no navegador) e o firewall/IP.
-- **Login falha**: confira `nome`/`senha` e o `base_url`.
+  stack está no ar (`http://IP:8010/documentation` no navegador) e o firewall/IP.
+- **Login falha (401)**: confira `usuario`/`senha` e o `keycloak_url`. Se a senha
+  foi trocada no Account Console, atualize aqui.
+- **Login falha (400 `Account is not fully set up`)**: o usuário no Keycloak
+  está sem nome/sobrenome ou com uma ação obrigatória pendente (ex.: definir a
+  primeira senha). Direct Access Grant não abre tela para resolver isso —
+  a pessoa precisa entrar uma vez pelo navegador, no portal.
+- **403 no digest**: o usuário não está no grupo `/apps/despesa` do Keycloak.
 - **Avisa todo dia mesmo sem mudança**: é o esperado — é um *digest diário*. Se não
   houver despesas na janela, ele não notifica.
 
 ## Segurança
 O `config.json` guarda a senha em texto puro (ferramenta interna de LAN). Se for um
 problema, crie um usuário dedicado de baixo privilégio por máquina.
+
+## Quando o IP do servidor mudar
+
+Este é o único lugar do sistema onde o IP **não** vem do `.env` do servidor: o
+agente roda na máquina de cada pessoa, fora do Docker. Trocar o IP obriga a
+redistribuir o `config.json` em todas as instalações — mais um motivo para o
+servidor ter IP fixo ou reserva de DHCP.

@@ -21,6 +21,7 @@ export interface User {
     nome: string;
     email: string;
     senha?: string;
+  admin?: boolean;
 }
 
 export interface NotificationConfig {

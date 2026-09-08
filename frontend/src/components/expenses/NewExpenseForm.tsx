@@ -24,7 +24,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format, formatISO, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { addExpense, getExpenses, getStoredUser } from '@/lib/api';
+import { addExpense, getExpenses, getCurrentUser } from '@/lib/api';
 import { type User, type Expense } from '@/lib/types';
 import { Combobox } from '@/components/ui/combobox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -71,12 +71,13 @@ export function NewExpenseForm() {
   const [expenseNames, setExpenseNames] = useState<string[]>([]);
   
   useEffect(() => {
-    const userData = getStoredUser();
-    if (userData) {
-      setUser(userData);
-    } else {
-        router.replace('/login');
-    }
+    // Sem sessão o middleware já teria barrado antes desta página montar; o
+    // redirect aqui é só rede de segurança para o caso de a sessão morrer com a
+    // aba aberta.
+    getCurrentUser().then((userData) => {
+      if (userData) setUser(userData);
+      else router.replace('/api/auth/login');
+    });
   }, [router]);
   
   const form = useForm<ExpenseFormValues>({

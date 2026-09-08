@@ -1,7 +1,9 @@
 {
-  "base_url": "http://192.168.0.10:8000",
-  "nome": "seu_usuario",
-  "senha": "sua_senha",
-  "dashboard_url": "http://192.168.0.10:3000",
+  "base_url": "http://192.168.0.10:8010",
+  "keycloak_url": "http://192.168.0.10:8080/realms/ufc",
+  "client_id": "despesa-agent",
+  "usuario": "seu.email@ufcengenharia.com.br",
+  "senha": "sua_senha_do_keycloak",
+  "dashboard_url": "http://192.168.0.10:3010",
   "forcar": false
 }

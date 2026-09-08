@@ -99,18 +99,11 @@ async def test_digest_window_and_situacao(async_client, auth):
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_digest_targeting_por_despesa(async_client, auth):
+async def test_digest_targeting_por_despesa(async_client, auth, outro_auth):
     headers = auth["headers"]
 
-    await async_client.post(
-        "/users/",
-        json={"nome": "outro_notif", "email": "outro_notif@e.com", "senha": "senha123"},
-    )
-    login = await async_client.post(
-        "/auth/login", json={"nome": "outro_notif", "senha": "senha123"}
-    )
-    other_id = login.json()["user"]["id"]
-    other_headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+    other_id = outro_auth["user"]["id"]
+    other_headers = outro_auth["headers"]
 
     venc = (datetime.date.today() + datetime.timedelta(days=2)).isoformat()
     # Criada por A, mas só o outro (B) é destinatário.

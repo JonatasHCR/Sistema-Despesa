@@ -10,12 +10,17 @@ os.environ["DB_PASSWORD"] = "test"
 os.environ["DB_HOST"] = "localhost"
 os.environ["DB_PORT"] = "5432"
 os.environ["DB_NAME"] = "test"
-os.environ["JWT_SECRET_KEY"] = "test-secret-key-only-for-pytest"
+# Não há mais segredo de assinatura: os testes cunham tokens RS256 com uma
+# chave própria e trocam o PyJWKClient (ver tests/support/oidc.py).
+os.environ["OIDC_ISSUER"] = "http://keycloak-de-teste:8080/realms/ufc"
+os.environ["OIDC_AUDIENCE"] = "despesa-api"
+os.environ["OIDC_REQUIRED_GROUP"] = "/apps/despesa"
 os.environ["RATE_LIMIT_ENABLED"] = "0"
 os.environ["HTTP_PROXY"] = ""
 os.environ["HTTPS_PROXY"] = ""
 os.environ["NO_PROXY"] = "*"
 
+import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_scoped_session
 from sqlalchemy.orm import sessionmaker
@@ -24,7 +29,9 @@ from httpx import AsyncClient, ASGITransport
 from asgi_lifespan import LifespanManager
 
 from main import app
+from app.api.version_1 import dependencies
 from app.core.database import Base, get_db
+from tests.support import oidc
 
 
 DATABASE_URL = "sqlite+aiosqlite:///:memory:"
@@ -87,23 +94,43 @@ async def async_client(async_db):
     app.dependency_overrides.clear()
 
 
+@pytest.fixture(autouse=True)
+def _sem_keycloak(monkeypatch):
+    """Troca o cliente de JWKS pelo falso — nenhum teste toca a rede."""
+    monkeypatch.setattr(dependencies, "_jwks_client", oidc.JWKClientFalso())
+
+
+async def _entrar(async_client, sub: str, email: str, nome: str):
+    """Faz a primeira requisição autenticada, que é o que provisiona a conta.
+
+    Não há mais cadastro nem login: a conta local nasce no primeiro token válido
+    (JIT), exatamente como em produção. Por isso a fixture entra pelo GET
+    /users/ em vez de criar o usuário à mão — assim o teste exercita o caminho
+    de provisionamento de verdade.
+    """
+    headers = {"Authorization": f"Bearer {oidc.cunhar_token(sub, email, nome)}"}
+    resposta = await async_client.get(f"/users/email/{email}", headers=headers)
+    assert resposta.status_code == 200, resposta.text
+    return {"user": resposta.json(), "token": headers["Authorization"], "headers": headers}
+
+
 @pytest_asyncio.fixture
 async def auth(async_client):
-    """Cria um usuário, faz login e retorna user, token e headers prontos."""
-    credentials = {"nome": "usuario teste", "senha": "senha123"}
-    create_response = await async_client.post(
-        "/users/",
-        json={**credentials, "email": "teste@gmail.com"},
+    """Usuário autenticado pelo Keycloak, provisionado na primeira chamada."""
+    return await _entrar(
+        async_client,
+        sub="11111111-1111-1111-1111-111111111111",
+        email="teste@gmail.com",
+        nome="usuario teste",
     )
-    assert create_response.status_code == 201, create_response.text
-    user = create_response.json()
 
-    login_response = await async_client.post("/auth/login", json=credentials)
-    assert login_response.status_code == 200, login_response.text
-    token = login_response.json()["access_token"]
 
-    return {
-        "user": user,
-        "token": token,
-        "headers": {"Authorization": f"Bearer {token}"},
-    }
+@pytest_asyncio.fixture
+async def outro_auth(async_client):
+    """Um segundo usuário, para os testes de permissão entre contas."""
+    return await _entrar(
+        async_client,
+        sub="22222222-2222-2222-2222-222222222222",
+        email="outro@gmail.com",
+        nome="outro",
+    )

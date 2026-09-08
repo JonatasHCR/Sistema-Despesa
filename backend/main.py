@@ -1,14 +1,11 @@
-import os
-
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 from app.api.version_1.endpoints.despesa import DespesaEndpoint
 from app.api.version_1.endpoints.user import UserEndpoint
-from app.api.version_1.endpoints.auth import AuthEndpoint
+from app.api.version_1.endpoints.manutencao import ManutencaoEndpoint
 from app.api.version_1.endpoints.notificacao import NotificacaoEndpoint
 from app.core.rate_limit import limiter
 
@@ -21,8 +18,8 @@ app = FastAPI(
     openapi_tags=[
         {"name": "User", "description": "Operações com Usuários"},
         {"name": "Despesa", "description": "Operações com Despesas"},
-        {"name": "Auth", "description": "Operações de Autenticação"},
         {"name": "Notificacao", "description": "Configuração e digest de notificações"},
+        {"name": "Manutencao", "description": "Backup, restauração e limpeza (só admin)"},
     ],
 )
 
@@ -31,18 +28,12 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
-_allowed_origins_env = os.environ.get("CORS_ALLOWED_ORIGINS", "http://localhost:3000")
-_allowed_origins = [o.strip() for o in _allowed_origins_env.split(",") if o.strip()]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=_allowed_origins,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    allow_credentials=True,
-)
+# Sem CORS: nenhum navegador fala com esta API. O front chama `/api` no mesmo
+# servidor Next, que repassa por dentro da rede do Docker; o agente Windows não
+# é navegador e não faz preflight. Manter o middleware só daria a impressão de
+# que a API é chamada de origens cruzadas.
 
 app.include_router(UserEndpoint().router)
 app.include_router(DespesaEndpoint().router)
-app.include_router(AuthEndpoint().router)
 app.include_router(NotificacaoEndpoint().router)
+app.include_router(ManutencaoEndpoint().router)

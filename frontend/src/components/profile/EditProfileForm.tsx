@@ -17,10 +17,10 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader, Eye, EyeOff } from 'lucide-react';
+import { Loader, ExternalLink } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { type User } from '@/lib/types';
-import { updateUser, signIn, getStoredUser, storeSession } from '@/lib/api';
+import { updateUser, getCurrentUser } from '@/lib/api';
 
 const profileFormSchema = z.object({
   nome: z.string().min(2, {
@@ -29,8 +29,6 @@ const profileFormSchema = z.object({
   email: z.string().email({
     message: 'Por favor, insira um e-mail válido.',
   }),
-  senhaAtual: z.string().optional(),
-  novaSenha: z.string().optional(),
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
@@ -40,32 +38,24 @@ export function EditProfileForm() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [user, setUser] = useState<User | null>(null);
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
       nome: '',
       email: '',
-      senhaAtual: '',
-      novaSenha: '',
     },
   });
   
   useEffect(() => {
-    const userData = getStoredUser();
-    if (userData) {
-      setUser(userData);
-      form.reset({
-        nome: userData.nome,
-        email: userData.email,
-        senhaAtual: '',
-        novaSenha: '',
-      });
-    } else {
-      router.replace('/login');
-    }
+    getCurrentUser().then((userData) => {
+      if (userData) {
+        setUser(userData);
+        form.reset({ nome: userData.nome, email: userData.email });
+      } else {
+        router.replace('/api/auth/login');
+      }
+    });
   }, [form, router]);
 
 
@@ -74,40 +64,10 @@ export function EditProfileForm() {
     setIsSubmitting(true);
     
     try {
-      // Se o usuário quer trocar de senha, valida a atual reautenticando.
-      if (data.novaSenha) {
-        if (!data.senhaAtual) {
-            toast({
-                variant: 'destructive',
-                title: 'Atenção',
-                description: 'Por favor, informe sua senha atual para definir uma nova.',
-            });
-            setIsSubmitting(false);
-            return;
-        }
-
-        try {
-            const { access_token, user: refreshedUser } = await signIn({ nome: user.nome, senha: data.senhaAtual });
-            storeSession(access_token, refreshedUser);
-        } catch (error) {
-            toast({
-                variant: 'destructive',
-                title: 'Erro de Autenticação',
-                description: 'A senha atual está incorreta.',
-            });
-            setIsSubmitting(false);
-            return;
-        }
-      }
-
-      const updateData: Partial<User> & { senha?: string } = {
+      const updateData: Partial<User> = {
         nome: data.nome,
         email: data.email,
       };
-
-      if (data.novaSenha) {
-        updateData.senha = data.novaSenha;
-      }
 
       const updatedUser = await updateUser(user.id, updateData);
       setUser({ ...user, ...updatedUser });
@@ -173,76 +133,24 @@ export function EditProfileForm() {
                 </FormItem>
               )}
             />
-             <FormField
-              control={form.control}
-              name="senhaAtual"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Senha Atual</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <Input
-                        type={showCurrentPassword ? 'text' : 'password'}
-                        placeholder="Informe para alterar a senha"
-                        {...field}
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute inset-y-0 right-0 h-full px-3"
-                        onClick={() => setShowCurrentPassword((prev) => !prev)}
-                      >
-                        {showCurrentPassword ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
-                        <span className="sr-only">
-                          {showCurrentPassword ? 'Ocultar senha' : 'Mostrar senha'}
-                        </span>
-                      </Button>
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-             <FormField
-              control={form.control}
-              name="novaSenha"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nova Senha</FormLabel>
-                  <FormControl>
-                     <div className="relative">
-                        <Input
-                          type={showNewPassword ? 'text' : 'password'}
-                          placeholder="Deixe em branco para não alterar"
-                          {...field}
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="absolute inset-y-0 right-0 h-full px-3"
-                          onClick={() => setShowNewPassword((prev) => !prev)}
-                        >
-                          {showNewPassword ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                          <span className="sr-only">
-                            {showNewPassword ? 'Ocultar senha' : 'Mostrar senha'}
-                          </span>
-                        </Button>
-                      </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* A senha nao vive mais aqui: quem a guarda e o Keycloak, e trocá-la
+                é no Account Console dele. Deixar os campos apenas para
+                encaminhar seria pior — sugeriria que este sistema ainda tem
+                alguma senha sua. */}
+            <div className="rounded-md border bg-muted/40 p-4">
+              <p className="text-sm font-medium">Senha</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Sua senha é a mesma dos outros sistemas e é gerenciada em um só
+                lugar.
+              </p>
+              <a
+                href="/api/auth/conta"
+                className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium underline underline-offset-4"
+              >
+                Alterar minha senha
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            </div>
           </CardContent>
           <CardFooter className="flex flex-col-reverse sm:flex-row sm:justify-between gap-2 p-4 sm:p-6">
             <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => router.back()}>

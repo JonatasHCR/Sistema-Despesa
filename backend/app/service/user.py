@@ -1,6 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import hash_password
 from app.model.user import User
 from app.schema.user import UserOutputSchema, UserSchema, UserUpdateSchema
 from app.repository.user import UserRepository
@@ -21,28 +20,6 @@ class UserService(BaseService[UserRepository, UserSchema, UserUpdateSchema, User
             return None
         return UserOutputSchema.model_validate(busca)
 
-    async def get_model_by_username(self, username: str) -> User | None:
-        """Retorna o objeto User cru (com hash da senha) para fluxos de autenticação."""
-        return await self.repository.get_by_username(username)
-
-    async def update_password_hash(self, id: int, hashed_password: str) -> None:
-        """Grava um hash já calculado direto na coluna (sem re-hashear). Usado
-        para migrar hashes antigos para Argon2 durante o login."""
-        await self.repository.update(id, senha=hashed_password)
-
-    async def create(self, schema: UserSchema) -> UserOutputSchema:
-        data = schema.model_dump()
-        data["senha"] = hash_password(data["senha"])
-        resposta = await self.repository.create(**data)
-        return self.output_schema.model_validate(resposta)
-
-    async def update(self, id: int, schema: UserUpdateSchema) -> UserOutputSchema:
-        update_data = schema.model_dump(exclude_unset=True)
-
-        if update_data.get("senha"):
-            update_data["senha"] = hash_password(update_data["senha"])
-        else:
-            update_data.pop("senha", None)
-
-        resposta = await self.repository.update(id, **update_data)
-        return self.output_schema.model_validate(resposta)
+    async def get_model_by_email(self, email: str) -> User | None:
+        """Objeto User cru, para o fluxo de autenticação."""
+        return await self.repository.find_by_email(email)
