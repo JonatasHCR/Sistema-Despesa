@@ -30,12 +30,21 @@ services:
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_HOST: db
       DB_PORT: 5432
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY é obrigatório}
-      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
-      JWT_ACCESS_TOKEN_EXPIRE_MINUTES: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-1440}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+      OIDC_ISSUER: http://${HOST_IP:?defina HOST_IP no .env}:8080/realms/ufc
+      OIDC_AUDIENCE: ${OIDC_AUDIENCE:-despesa-api}
+      OIDC_REQUIRED_GROUP: ${OIDC_REQUIRED_GROUP:-/apps/despesa}
+      # A conta mestra: UM email, o mesmo nos tres sistemas, que entra como
+      # admin aqui sem depender de grupo nem de script de promocao.
+      ADMIN_MESTRE_EMAIL: ${ADMIN_MESTRE_EMAIL:-}
+      # Mesmo diretorio do sidecar de backup: os agendados e os feitos pelo
+      # botao caem na mesma lista, e o scripts/restore.sh serve para os dois.
+      BACKUP_DIR: /backups
+    volumes:
+      - ./backups:/backups
+    # 8010 no host: a 8000 e do inventario. Publicada porque o agente Windows
+    # fala direto com ela, de fora do Docker.
     ports:
-      - "8000:8000"
+      - "8010:8000"
     depends_on:
       db:
         condition: service_healthy
@@ -47,60 +56,38 @@ services:
   frontend:
     build:
       context: ./frontend
-      args:
-        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
     environment:
+      # O navegador fala só com este servidor Next, em /api: a URL do backend
+      # nunca sai do servidor.
       INTERNAL_API_BASE_URL: ${INTERNAL_API_BASE_URL:-http://backend:8000}
-      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+      HOST_IP: ${HOST_IP}
+      PORT: "3000"
+      OIDC_CLIENT_ID: despesa-web
+      OIDC_CLIENT_SECRET: ${DESPESA_CLIENT_SECRET:?defina DESPESA_CLIENT_SECRET no .env}
+      SESSION_SECRET: ${DESPESA_SESSION_SECRET:?defina DESPESA_SESSION_SECRET no .env}
+      # O limite padrao de header do Node e 16 KB. Como cookie nao distingue
+      # porta e os quatro apps vivem no mesmo host, o navegador manda os cookies
+      # de todos para cada um — e o header estoura no quarto login, com um 431
+      # que derruba tudo de uma vez. As sessoes ja foram enxugadas; isto e a
+      # folga para o dia em que entrar um quinto sistema.
+      NODE_OPTIONS: "--max-http-header-size=65536"
+      PORTA_PUBLICA: "3010"
+      # As portas dos outros sistemas, para o seletor "Sistemas" montar os links.
+      # Vem do ambiente, e nao de NEXT_PUBLIC_*, que seria assado na imagem em
+      # tempo de build e traria o IP de volta para os artefatos.
+      PORTAL_PORT: ${PORTAL_PORT:-3080}
+      INVENTARIO_PORT: ${INVENTARIO_PORT:-3030}
+      RECEITA_PORT: ${RECEITA_PORT:-3040}
+      DESPESA_PORT: ${DESPESA_PORT:-3010}
+    # 3010 no host: a 3000 e do inventario.
     ports:
-      - "3000:3000"
+      - "3010:3000"
     depends_on:
       backend:
         condition: service_healthy
     networks:
       - public
     restart: unless-stopped
-
-  gitea:
-    image: gitea/gitea:1
-    environment:
-      USER_UID: "1000"
-      USER_GID: "1000"
-    volumes:
-      - gitea_data:/data
-    ports:
-      - "3001:3000"
-      - "2222:22"
-    networks:
-      - public
-    restart: unless-stopped
-    profiles: [ci]
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--spider", "http://localhost:3000/api/healthz"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-
-  gitea-runner:
-    build:
-      context: ./scripts
-      dockerfile: runner.Dockerfile
-    depends_on:
-      gitea:
-        condition: service_healthy
-    environment:
-      GITEA_INSTANCE_URL: http://gitea:3000
-      GITEA_RUNNER_REGISTRATION_TOKEN: ${GITEA_RUNNER_TOKEN:-}
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - runner_data:/data
-      - ./scripts/runner-config.yml:/config.yml:ro
-    networks:
-      - public
-    restart: unless-stopped
-    profiles: [ci]
-    command: ["act_runner", "--config", "/config.yml", "daemon"]
 
   backup:
     image: postgres:17-alpine
@@ -113,6 +100,7 @@ services:
     volumes:
       - ./backups:/backups
       - ./scripts/backup.sh:/backup.sh:ro
+    # sed: normaliza CRLF de um checkout no Windows antes de rodar.
     entrypoint: ["/bin/sh", "-c", "sed 's/\\r//g' /backup.sh > /tmp/backup.sh && exec sh /tmp/backup.sh"]
     depends_on:
       db:
@@ -127,5 +115,3 @@ networks:
 
 volumes:
   postgres_data:
-  gitea_data:
-  runner_data:

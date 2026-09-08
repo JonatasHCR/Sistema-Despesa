@@ -1,41 +1,16 @@
 import { type Expense, type User, type NotificationConfig, type Digest } from './types';
 import { parseISO, format } from 'date-fns';
 
-const API_BASE_URL = typeof window === 'undefined'
-  ? process.env.INTERNAL_API_BASE_URL || 'http://backend:8000'
-  : process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
-
-const TOKEN_KEY = 'authToken';
-const SESSION_KEY = 'userSession';
-
-export interface AuthResponse {
-  access_token: string;
-  token_type: string;
-  user: User;
-}
-
-function getStoredToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem(TOKEN_KEY);
-}
-
-export function clearSession() {
-  if (typeof window === 'undefined') return;
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(SESSION_KEY);
-}
-
-export function storeSession(token: string, user: User) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(TOKEN_KEY, token);
-  localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-}
-
-export function getStoredUser(): User | null {
-  if (typeof window === 'undefined') return null;
-  const raw = localStorage.getItem(SESSION_KEY);
-  return raw ? (JSON.parse(raw) as User) : null;
-}
+/**
+ * Todas as chamadas vão para `/api` NESTE servidor Next, que anexa o
+ * `Authorization` a partir do cookie de sessão e repassa ao FastAPI
+ * (ver src/app/api/[...path]/route.ts).
+ *
+ * O token não passa mais pelo navegador: acabaram o `localStorage` com
+ * `authToken`/`userSession`, o `NEXT_PUBLIC_API_BASE_URL` assado na imagem e o
+ * CORS entre navegador e FastAPI. Um XSS aqui não rouba mais credencial de API.
+ */
+const API_BASE_URL = '/api';
 
 async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers || {});
@@ -43,52 +18,33 @@ async function apiFetch(path: string, init: RequestInit = {}): Promise<Response>
   if (!headers.has('Content-Type') && init.body && !(init.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
   }
-  const token = getStoredToken();
-  if (token && !headers.has('Authorization')) {
-    headers.set('Authorization', `Bearer ${token}`);
-  }
 
   const response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
 
-  if (response.status === 401 && typeof window !== 'undefined' && token) {
-    clearSession();
-    if (!window.location.pathname.startsWith('/login')) {
-      window.location.replace('/login');
-    }
+  if (response.status === 401 && typeof window !== 'undefined') {
+    // A sessão morreu (ou o refresh falhou). Quem decide para onde ir é o
+    // servidor: /api/auth/login monta a URL do Keycloak.
+    window.location.replace('/api/auth/login');
   }
 
   return response;
 }
 
-// --- Auth API ---
-export const signIn = async (credentials: { nome: string; senha: string }): Promise<AuthResponse> => {
-  const response = await fetch(`${API_BASE_URL}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(credentials),
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.detail || 'Usuário ou senha inválidos.');
+/**
+ * O usuário logado, vindo do cookie de sessão — substitui o antigo
+ * `getStoredUser()`, que lia um JSON editável no localStorage.
+ *
+ * Assíncrono agora, porque a origem é o servidor e não mais o navegador.
+ */
+export async function getCurrentUser(): Promise<User | null> {
+  try {
+    const response = await fetch('/api/auth/me', { cache: 'no-store' });
+    if (!response.ok) return null;
+    return (await response.json()) as User;
+  } catch {
+    return null;
   }
-
-  return response.json();
-};
-
-export const signUp = async (input: { name: string; email: string; password: string }): Promise<User> => {
-  const response = await fetch(`${API_BASE_URL}/users/`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nome: input.name, email: input.email, senha: input.password }),
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.detail || 'Não foi possível criar a conta.');
-  }
-  return response.json();
-};
+}
 
 // --- Users API ---
 export const getUserById = async (id: number): Promise<User | null> => {
@@ -101,11 +57,11 @@ export const getUserById = async (id: number): Promise<User | null> => {
 };
 
 export const updateUser = async (id: number, data: Partial<Omit<User, 'id'>>): Promise<User> => {
+  // Sem `senha`: a troca de senha vive no Account Console do Keycloak.
   const payload: Record<string, unknown> = {
     nome: data.nome,
     email: data.email,
   };
-  if (data.senha) payload.senha = data.senha;
 
   const response = await apiFetch(`/users/${id}`, {
     method: 'PUT',
@@ -118,12 +74,6 @@ export const updateUser = async (id: number, data: Partial<Omit<User, 'id'>>): P
   }
 
   const updatedUser: User = await response.json();
-  if (typeof window !== 'undefined') {
-    const stored = getStoredUser();
-    if (stored && stored.id === id) {
-      localStorage.setItem(SESSION_KEY, JSON.stringify({ ...stored, ...updatedUser }));
-    }
-  }
   return updatedUser;
 };
 

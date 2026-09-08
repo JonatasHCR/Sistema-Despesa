@@ -20,7 +20,19 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
   }, []);
 
   const isDark = theme === 'dark';
-  const label = isDark ? 'Mudar para tema claro' : 'Mudar para tema escuro';
+
+  // O rótulo também depende do tema, e por isso também precisa esperar o mount.
+  //
+  // O estado inicial de `useTheme` lê a classe do <html>, que só existe no
+  // navegador: no servidor sai sempre 'light'. O ícone já era protegido, mas o
+  // `title`/`aria-label` não — e um atributo diferente entre servidor e cliente
+  // é exatamente o que dispara "Hydration failed because the server rendered
+  // HTML didn't match the client".
+  const label = !mounted
+    ? 'Alternar tema'
+    : isDark
+      ? 'Mudar para tema claro'
+      : 'Mudar para tema escuro';
 
   return (
     <Button

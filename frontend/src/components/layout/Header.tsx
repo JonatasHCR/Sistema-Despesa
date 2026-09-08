@@ -6,8 +6,9 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, User, LogOut, Settings, FileText, LayoutDashboard } from 'lucide-react';
 import { type User as UserType } from '@/lib/types';
-import { clearSession, getStoredUser } from '@/lib/api';
+import { getCurrentUser } from '@/lib/api';
 import { ThemeToggle } from './ThemeToggle';
+import { TrocarSistema } from './TrocarSistema';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import {
   DropdownMenu,
@@ -32,12 +33,16 @@ export default function Header({ title, subtitle, showNewExpenseButton = false }
   const [user, setUser] = useState<UserType | null>(null);
 
   useEffect(() => {
-    setUser(getStoredUser());
+    // O usuário vem do cookie de sessão, pelo servidor — não mais de um JSON
+    // no localStorage, que o próprio navegador podia editar.
+    getCurrentUser().then(setUser);
   }, []);
 
   const handleLogout = () => {
-    clearSession();
-    router.push('/login');
+    // Logout RP-initiated: encerra a sessão no Keycloak também, deslogando dos
+    // três sistemas. Apagar só o cookie daqui deixaria o próximo acesso entrar
+    // direto, sem pedir senha.
+    window.location.href = '/api/auth/logout';
   };
 
   const getInitials = (name: string | undefined) => {
@@ -96,6 +101,18 @@ export default function Header({ title, subtitle, showNewExpenseButton = false }
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        {user?.admin && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1 sm:flex-initial sm:size-default"
+            onClick={() => router.push('/administracao')}
+          >
+            <Settings className="h-4 w-4 sm:mr-2" />
+            <span className="ml-2 sm:ml-0 hidden sm:inline">Administração</span>
+          </Button>
+        )}
+        <TrocarSistema />
         <ThemeToggle className="hidden sm:inline-flex" />
         {pathname !== '/' && (
             <Button variant="outline" size="sm" className="flex-1 sm:flex-initial sm:size-default" onClick={() => router.push('/')}>
