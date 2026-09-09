@@ -14,7 +14,11 @@ log() {
 do_backup() {
   FILE="$BACKUP_DIR/backup_$(date +%Y%m%d_%H%M).sql"
   log "Iniciando backup..."
-  if PGPASSWORD="$POSTGRES_PASSWORD" pg_dump -h db -U "$POSTGRES_USER" "$POSTGRES_DB" > "$FILE"; then
+  # --clean/--if-exists nao sao opcionais: sem os DROPs o arquivo so sabe
+  # criar tabelas do zero, e restaurar por cima de um banco existente aplica
+  # so os COPY que nao conflitam — foi assim que alembic_version ganhou uma
+  # segunda linha e derrubou o backend.
+  if PGPASSWORD="$POSTGRES_PASSWORD" pg_dump -h db -U "$POSTGRES_USER"       --clean --if-exists --no-owner --no-privileges "$POSTGRES_DB" > "$FILE"; then
     log "Backup salvo: $(basename "$FILE")"
     COUNT=$(ls -t "$BACKUP_DIR"/backup_*.sql 2>/dev/null | wc -l)
     if [ "$COUNT" -gt "$KEEP" ]; then

@@ -11,8 +11,11 @@ botão ficam na mesma lista.
 from __future__ import annotations
 
 import asyncio
+import gzip
 import os
 import re
+import shutil
+import tempfile
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -179,13 +182,27 @@ class ManutencaoService:
         )
 
     async def restaurar(self, nome: str) -> str:
-        """Substitui os dados atuais pelos do arquivo. Irreversível."""
+        """Substitui os dados atuais pelos do arquivo. Irreversível.
+
+        Dois formatos convivem na mesma lista: o `.dump` do botão (custom, do
+        `pg_dump -Fc`) e o `.sql` do sidecar agendado (texto puro). O
+        `pg_restore` só lê o primeiro — no segundo ele para em "input file
+        appears to be a text format dump", então texto vai por `psql`.
+        """
         arquivo = self.resolver_arquivo(nome)
 
-        # A sessão precisa sair do caminho: o pg_restore vai derrubar as tabelas
+        # A sessão precisa sair do caminho: o restore vai derrubar as tabelas
         # que ela mantém abertas, e uma conexão presa vira deadlock.
         await self.session.close()
 
+        if arquivo.name.endswith(".dump"):
+            await self._restaurar_custom(arquivo)
+        else:
+            await self._restaurar_texto(arquivo)
+
+        return arquivo.name
+
+    async def _restaurar_custom(self, arquivo: Path) -> None:
         await self._rodar(
             "pg_restore",
             "--clean",
@@ -196,7 +213,60 @@ class ManutencaoService:
             str(arquivo),
             tolerar=TOLERADOS_NO_RESTORE,
         )
-        return arquivo.name
+
+    async def _restaurar_texto(self, arquivo: Path) -> None:
+        """Restaura `.sql` / `.sql.gz` — o formato dos backups agendados."""
+        if arquivo.name.endswith(".gz"):
+            caminho = await asyncio.to_thread(self._descomprimir, arquivo)
+        else:
+            caminho = arquivo
+
+        try:
+            await asyncio.to_thread(self._exigir_clean, caminho)
+            # ON_ERROR_STOP e single-transaction andam juntos e não são
+            # opcionais: sem eles o psql segue depois de cada erro e sai com
+            # código 0 tendo aplicado só parte do arquivo. Foi assim que uma
+            # restauração de backup antigo inseriu uma segunda linha em
+            # `alembic_version` — dois heads na mesma linhagem — e o
+            # `alembic upgrade head` do start passou a derrubar o backend.
+            await self._rodar(
+                "psql",
+                "--set", "ON_ERROR_STOP=1",
+                "--single-transaction",
+                *self._conexao(),
+                "-f", str(caminho),
+            )
+        finally:
+            if caminho != arquivo:
+                caminho.unlink(missing_ok=True)
+
+    @staticmethod
+    def _descomprimir(arquivo: Path) -> Path:
+        descritor, destino = tempfile.mkstemp(suffix=".sql")
+        os.close(descritor)
+        caminho = Path(destino)
+        with gzip.open(arquivo, "rb") as origem, caminho.open("wb") as saida:
+            shutil.copyfileobj(origem, saida)
+        return caminho
+
+    @staticmethod
+    def _exigir_clean(caminho: Path) -> None:
+        """Recusa dump texto que não tenha os DROPs do `--clean`.
+
+        Sem eles o arquivo só sabe criar o que já existe: em transação única
+        cada comando falha e a restauração inteira volta atrás. Parar aqui diz
+        o motivo; deixar seguir devolve só "relation already exists".
+        """
+        with caminho.open("r", encoding="utf-8", errors="replace") as f:
+            for linha in f:
+                if linha.startswith("DROP "):
+                    return
+
+        raise ErroDeManutencao(
+            "Este backup foi gerado sem `--clean` e só sabe criar tabelas do "
+            "zero: não dá para restaurá-lo por cima de um banco existente. "
+            "Use um backup mais recente ou um arquivo .dump."
+        )
 
     def _monta_filtro(self, config: dict, f: Filtros) -> tuple[str, dict]:
         """Traduz os filtros numa cláusula WHERE sobre `tb_despesas`.

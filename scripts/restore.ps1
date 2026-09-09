@@ -18,7 +18,13 @@ if ($confirm -ne 's') {
 }
 
 Write-Host "Restaurando..."
-Get-Content $fullPath | docker compose exec -T db psql -U $env:POSTGRES_USER $env:POSTGRES_DB
+# ON_ERROR_STOP e --single-transaction andam juntos: sem eles o psql segue
+# depois de cada erro e sai com codigo 0 tendo aplicado so parte do arquivo.
+# Um restore assim, de um backup antigo, inseriu uma segunda linha em
+# alembic_version (dois heads na mesma linhagem) e derrubou o backend.
+Get-Content -Raw $fullPath | docker compose exec -T db psql `
+  --set ON_ERROR_STOP=1 --single-transaction `
+  -U $env:POSTGRES_USER -d $env:POSTGRES_DB
 
 if ($LASTEXITCODE -eq 0) {
   Write-Host "Restore concluido com sucesso."
