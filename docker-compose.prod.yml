@@ -1,0 +1,25 @@
+# Camada de PRODUCAO. Nao se usa sozinha:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# (e o que o `stack.ps1 -Prod` monta). Passar `-f` explicito tem um segundo
+# efeito, que e metade da razao deste arquivo existir: o Compose deixa de
+# carregar o docker-compose.override.yml sozinho — e aquele override e de
+# DESENVOLVIMENTO (uvicorn --reload como root, `npm run dev` no frontend).
+# Sem isto, a producao roda em modo dev.
+#
+# O que sobra aqui e so o que difere de verdade entre as duas maquinas: onde
+# mora o banco.
+
+services:
+
+  db:
+    # Os dados reais da producao estao NESTE diretorio, nao no volume nomeado
+    # `postgres_data` do compose base — que naquela maquina nem chegou a ser
+    # criado. Trocar por volume nomeado sobe um Postgres vazio.
+    volumes:
+      - ./postgres_data_prod:/var/lib/postgresql/data
+    # Loopback apenas: e o acesso do DBeaver/psql na propria maquina, que hoje
+    # vem do override. Nao publica nada para a rede.
+    ports:
+      - "127.0.0.1:5432:5432"
