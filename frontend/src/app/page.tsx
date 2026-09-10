@@ -13,7 +13,7 @@ function Home() {
     <PageWrapper>
       <div className="flex flex-col gap-8">
         <Header
-          title="Painel de Despesas"
+          title="Painel Radar"
           subtitle="Visualize e gerencie suas finanças de forma simples."
           showNewExpenseButton={true}
         />

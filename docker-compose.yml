@@ -79,6 +79,7 @@ services:
       INVENTARIO_PORT: ${INVENTARIO_PORT:-3030}
       RECEITA_PORT: ${RECEITA_PORT:-3040}
       DESPESA_PORT: ${DESPESA_PORT:-3010}
+      CONTROLE_DESPESA_PORT: ${CONTROLE_DESPESA_PORT:-3050}
     # 3010 no host: a 3000 e do inventario.
     ports:
       - "3010:3000"
