@@ -17,10 +17,9 @@ export interface Expense {
 }
 
 export interface User {
-    id: number;
-    nome: string;
-    email: string;
-    senha?: string;
+  id: number;
+  nome: string;
+  email: string;
   admin?: boolean;
 }
 

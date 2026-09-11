@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, User, LogOut, Settings, FileText, LayoutDashboard } from 'lucide-react';
+import { PlusCircle, User, LogOut, Settings, FileText, LayoutDashboard, ExternalLink } from 'lucide-react';
 import { type User as UserType } from '@/lib/types';
 import { getCurrentUser } from '@/lib/api';
 import { ThemeToggle } from './ThemeToggle';
@@ -90,6 +90,12 @@ export default function Header({ title, subtitle, showNewExpenseButton = false }
                     <span>Meu Perfil</span>
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild className="cursor-pointer">
+                  <a href="/api/auth/conta">
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    <span>Minha conta</span>
+                  </a>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
                   <LogOut className="mr-2 h-4 w-4" />
@@ -158,6 +164,12 @@ export default function Header({ title, subtitle, showNewExpenseButton = false }
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Meu Perfil</span>
                 </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild className="cursor-pointer">
+                <a href="/api/auth/conta">
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  <span>Minha conta</span>
+                </a>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
