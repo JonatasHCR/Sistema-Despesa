@@ -6,7 +6,7 @@ from app.api.version_1.dependencies import get_current_user
 from app.core.database import get_db
 from app.model.user import User
 from app.service.user import UserService
-from app.schema.user import UserSchema, UserOutputSchema, UserUpdateSchema
+from app.schema.user import UserSchema, UserOutputSchema
 
 
 class UserEndpoint:
@@ -23,9 +23,8 @@ class UserEndpoint:
         self.router.post("/", response_model=UserOutputSchema, status_code=201)(
             self._create
         )
-        self.router.put("/{id}", response_model=UserOutputSchema, status_code=200)(
-            self._update
-        )
+        # Sem PUT: nome e email vinham daqui, e agora vem do Keycloak. Editar
+        # localmente divergiria em silencio — o login nao reescreve os campos.
         self.router.delete("/{id}", response_model=None, status_code=204)(self._delete)
 
         self.router.get("/", response_model=list[UserOutputSchema])(self._get_all)
@@ -63,25 +62,6 @@ class UserEndpoint:
         service = self.service(db)
         try:
             return await service.get_by_id(id)
-        except ValueError as error:
-            raise HTTPException(
-                status_code=404,
-                detail=str(error).format(id=id, objeto="User"),
-            )
-
-    async def _update(
-        self,
-        id: int,
-        schema: UserUpdateSchema,
-        db: AsyncSession = Depends(get_db),
-        current_user: User = Depends(get_current_user),
-    ) -> UserOutputSchema:
-        if current_user.id != id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Sem permissão")
-
-        service = self.service(db)
-        try:
-            return await service.update(id, schema)
         except ValueError as error:
             raise HTTPException(
                 status_code=404,

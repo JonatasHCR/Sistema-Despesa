@@ -6,23 +6,15 @@ URL_USER = "/users/"
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_integration_update_get_delete_user(async_client, auth):
+async def test_integration_get_delete_user(async_client, auth):
     # A conta já existe: foi provisionada na primeira chamada autenticada, que
     # é como toda conta nasce agora. Não há mais POST /users/ público.
     user_id = auth["user"]["id"]
     headers = auth["headers"]
 
-    response_update = await async_client.put(
-        f"{URL_USER}{user_id}",
-        json={"nome": "User Teste Alterado"},
-        headers=headers,
-    )
-    assert response_update.status_code == 200
-    assert response_update.json()["nome"] == "User Teste Alterado"
-
     response_get = await async_client.get(f"{URL_USER}{user_id}", headers=headers)
     assert response_get.status_code == 200
-    assert response_get.json()["nome"] == "User Teste Alterado"
+    assert response_get.json()["id"] == user_id
 
     response_delete = await async_client.delete(f"{URL_USER}{user_id}", headers=headers)
     assert response_delete.status_code == 204
@@ -43,12 +35,23 @@ async def test_integration_criar_usuario_exige_autenticacao(async_client):
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_integration_update_other_user_forbidden(async_client, auth, outro_auth):
-    other_id = outro_auth["user"]["id"]
-
+async def test_integration_nao_da_para_editar_conta_por_aqui(async_client, auth):
+    """Nome e email vêm do Keycloak. O PUT saiu: editar aqui divergiria em
+    silêncio, porque o login não reescreve esses campos."""
     response = await async_client.put(
-        f"{URL_USER}{other_id}",
+        f"{URL_USER}{auth['user']['id']}",
+        json={"nome": "Alterado na marra"},
+        headers=auth["headers"],
+    )
+    assert response.status_code == 405
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_integration_nem_a_conta_dos_outros(async_client, auth, outro_auth):
+    response = await async_client.put(
+        f"{URL_USER}{outro_auth['user']['id']}",
         json={"nome": "hacker"},
         headers=auth["headers"],
     )
-    assert response.status_code == 403
+    assert response.status_code == 405
