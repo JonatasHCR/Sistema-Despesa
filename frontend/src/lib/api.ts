@@ -56,27 +56,6 @@ export const getUserById = async (id: number): Promise<User | null> => {
   return response.json();
 };
 
-export const updateUser = async (id: number, data: Partial<Omit<User, 'id'>>): Promise<User> => {
-  // Sem `senha`: a troca de senha vive no Account Console do Keycloak.
-  const payload: Record<string, unknown> = {
-    nome: data.nome,
-    email: data.email,
-  };
-
-  const response = await apiFetch(`/users/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.detail || 'Não foi possível atualizar o perfil.');
-  }
-
-  const updatedUser: User = await response.json();
-  return updatedUser;
-};
-
 // --- Expenses API ---
 type DespesaApi = Omit<Expense, 'userName' | 'dynamicStatus'> & { user_nome?: string | null };
 
